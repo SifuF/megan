@@ -5,23 +5,23 @@
 #include <iterator>
 #include <vector>
 
-Bus::Bus() {
-	cpu68000 = new Cpu68000(this);
-
+Bus::Bus() : cpu68000(this) {
 	std::ifstream input("roms/sonic.bin", std::ios::binary);
 	std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
 	rom = std::move(buffer);
 	ram.resize(0xffff);
+	io.resize(0x1f);
+	vdpComms.resize(0x1f);
+	z80Comms.resize(10);
 
 	//printMemory(BusItem::Rom, 0x100, 0x200);
 	//printMemory(BusItem::Ram, 0, 0xffff);
 	printHeader();
-	cpu68000->reset();
-	cpu68000->fetch();
+	cpu68000.reset();
+	cpu68000.fetch();
 }
 
 Bus::~Bus() {
-	delete cpu68000;
 }
 
 void Bus::printHeader() {
@@ -193,6 +193,12 @@ uint8 Bus::readByte(uint32 addr) {
 		std::cout << "Error - 32X space read";
 		return 0;
 	}
+	else if (addr < 0xA10000) {
+		std::cout << "Z80 space read";
+	}
+	else if (addr < 0xA10020) {
+		return io[addr - 0xA10000];
+	}
 	else if (addr < 0xFF0000) {
 		std::cout << "Not implemented read yet!";
 		return 0;
@@ -226,6 +232,12 @@ void Bus::writeLong(uint32 addr, uint32 data) {
 	}
 	else if (addr < 0xA00000) {
 		std::cout << "Error - 32X space write";
+	}
+	else if (addr < 0xA10000) {
+		std::cout << "Z80 write";
+	}
+	else if (addr < 0xA10020) {
+		io[addr - 0xA10000] = data;
 	}
 	else if (addr < 0xFF0000) {
 		std::cout << "Not implemented write yet!";
