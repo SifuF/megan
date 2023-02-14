@@ -5,23 +5,32 @@
 #include <iterator>
 #include <vector>
 
-Bus::Bus() : cpu68000(this) {
+Bus::Bus() : cpu68000(this), graphics(&vdp) {
 	std::ifstream input("roms/sonic.bin", std::ios::binary);
 	std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
-	rom = std::move(buffer);
-	ram.resize(0xffff);
-	io.resize(0x1f);
-	vdpComms.resize(0x1f);
-	z80Comms.resize(10);
+	map = std::move(buffer);
+	map.resize(0x1000000);
 
 	//printMemory(BusItem::Rom, 0x100, 0x200);
 	//printMemory(BusItem::Ram, 0, 0xffff);
 	printHeader();
-	cpu68000.reset();
-	cpu68000.fetch();
+	//cpu68000.reset();
+	//cpu68000.fetch();
+
+	loop();
 }
 
 Bus::~Bus() {
+}
+
+void Bus::loop() {
+	vdp.setup();
+	while (true) {
+		vdp.buildFrame();
+		graphics.draw();
+	}
+
+		//while (true);
 }
 
 void Bus::printHeader() {
@@ -136,12 +145,11 @@ void Bus::printHeader() {
 void Bus::clearMemory(BusItem busItem) {
 	switch (busItem) {
 		case(BusItem::Rom): {
-			std::memset(rom.data(), 0, rom.size());
+			std::memset(map.data(), 0, 0x400000);
 			break;
 		}
-
 		case(BusItem::Ram): {
-			std::memset(ram.data(), 0, ram.size());
+			std::memset(map.data() + 0xFF0000, 0, 0xFFFF);
 			break;
 		}
 		default: {
@@ -157,24 +165,24 @@ void Bus::printMemory(BusItem busItem, unsigned begin, unsigned end) {
 				if (!(i % 16))
 					std::cout << std::endl << "offset " << i << ": ";
 
-				if (rom.at(i) < 16)
+				if (map.at(i) < 16)
 					std::cout << 0;
 
-				std::cout << static_cast<unsigned char>(rom.at(i)) << " ";
+				std::cout << static_cast<unsigned char>(map.at(i)) << " ";
 			}
 			std::cout << std::endl;
 			break;
 		}
 
 		case(BusItem::Ram): {
-			for (unsigned i = begin; i < end; i++) {
+			for (unsigned i = begin + 0xFF0000; i < end + 0xFF0000; i++) {
 				if (!(i % 16))
 					std::cout << std::endl << "offset " << std::hex << i << ": ";
 
-				if (ram.at(i) < 16)
+				if (map.at(i) < 16)
 					std::cout << 0;
 
-				std::cout << static_cast<unsigned>(ram.at(i)) << " ";
+				std::cout << static_cast<unsigned>(map.at(i)) << " ";
 			}
 			std::cout << std::endl;
 			break;
@@ -187,30 +195,35 @@ void Bus::printMemory(BusItem busItem, unsigned begin, unsigned end) {
 
 uint8 Bus::readByte(uint32 addr) {
 	if (addr < 0x400000) {
-		return rom[addr];
+		//std::cout << "ROM read";
+	}
+	else if (addr < 0x800000) {
+		std::cout << "Error - Sega CD and 32X space read";
+		return 0;
 	}
 	else if (addr < 0xA00000) {
-		std::cout << "Error - 32X space read";
+		std::cout << "Error - 32X ? space read";
 		return 0;
 	}
 	else if (addr < 0xA10000) {
 		std::cout << "Z80 space read";
 	}
 	else if (addr < 0xA10020) {
-		return io[addr - 0xA10000];
+		std::cout << "IO read";
 	}
 	else if (addr < 0xFF0000) {
 		std::cout << "Not implemented read yet!";
 		return 0;
 	}
 	else if (addr < 0x1000000) {
-		// return ram
-		return 0;
+		std::cout << "IO read";
 	}
 	else {
 		std::cout << "Error - read above address space!";
 		return 0;
 	}
+
+	return map[addr];
 }
 
 uint16 Bus::readWord(uint32 addr) {
@@ -225,27 +238,45 @@ uint32 Bus::readLong(uint32 addr) {
 	return msb | lsb;
 }
 
-
-void Bus::writeLong(uint32 addr, uint32 data) {
+void Bus::writeByte(uint32 addr, uint8 data) {
 	if (addr < 0x400000) {
 		std::cout << "Error - ROM write";
 	}
+	else if (addr < 0x800000) {
+		std::cout << "Error - Sega CD and 32X space write";
+	}
 	else if (addr < 0xA00000) {
-		std::cout << "Error - 32X space write";
+		std::cout << "Error - 32X ? space write";
 	}
 	else if (addr < 0xA10000) {
-		std::cout << "Z80 write";
+		std::cout << "Z80 space write";
 	}
 	else if (addr < 0xA10020) {
-		io[addr - 0xA10000] = data;
+		std::cout << "IO write";
 	}
 	else if (addr < 0xFF0000) {
 		std::cout << "Not implemented write yet!";
 	}
 	else if(addr < 0x1000000) {
-		// write ram
+		std::cout << "RAM write";
 	}
 	else {
 		std::cout << "Error - write above address space!";
 	}
+
+	map[addr] = data;
+}
+
+void Bus::writeWord(uint32 addr, uint16 data) {
+	const uint8 msb = static_cast<uint8>(data);
+	const uint8 lsb = static_cast<uint8>(data << 8);
+	writeByte(addr, msb);
+	writeByte(addr + 1, lsb);
+}
+
+void Bus::writeLong(uint32 addr, uint32 data) {
+	const uint16 msb = static_cast<uint16>(data);
+	const uint16 lsb = static_cast<uint16>(data << 16);
+	writeWord(addr, msb);
+	writeWord(addr + 2, lsb);
 }

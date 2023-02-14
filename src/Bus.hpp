@@ -2,6 +2,7 @@
 
 #include "Cpu68000.hpp"
 #include "VDP.hpp"
+#include "Graphics.hpp"
 
 #include <vector>
 
@@ -14,6 +15,8 @@ class Bus {
 public:
 	Bus();
 	~Bus();
+
+	void loop();
 
 	void clearMemory(BusItem busItem);
 	void printMemory(BusItem busItem, unsigned begin, unsigned end);
@@ -30,13 +33,9 @@ public:
 private:
 	Cpu68000 cpu68000;
 	VDP vdp;
+	Graphics graphics;
 
-	std::vector<uint8> rom; // $0 to $3FFFFF (0x400000 bytes)
-	// RESERVED $400000 to $9FFFFF (0x200000 bytes)
-	std::vector<uint8> io; // $A10000 to $A1001F (0x20 bytes)
-	std::vector<uint8> z80Comms; // 10 bytes
-	std::vector<uint8> vdpComms; // 0x1F bytes
-	std::vector<uint8> ram; // 0xFFFF bytes
+	std::vector<uint8> map;
 };
 
 // ----------------------------------------------------------------------------
