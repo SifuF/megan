@@ -3,6 +3,8 @@
 #include <iostream>
 
 Graphics::Graphics(VDP * v) : vdp(v) {
+    width = vdp->getWidth();
+    height = vdp->getHeight();
     window.create(sf::VideoMode(width, height), "Megan");
     texture.create(width, height);
 }

@@ -17,8 +17,8 @@ private:
 	sf::Texture texture;
 	sf::Sprite sprite;
 
-	static constexpr int width = 340;
-	static constexpr int height = 240;
+	unsigned width;
+	unsigned height;
 
 	VDP * vdp;
 };
