@@ -9,28 +9,25 @@ Graphics::Graphics(VDP * v) : vdp(v) {
     texture.create(width, height);
 }
 
-void Graphics::test() {
+void Graphics::update() {
     auto & screen = vdp->getScreen();
     texture.update(screen.data());
     sprite.setTexture(texture);
 }
 
 void Graphics::draw() {
-    //while (window.isOpen())
-    //{
-        test();
+    update();
 
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-                window.close();
-        }
+    sf::Event event;
+    while (window.pollEvent(event))
+    {
+        if (event.type == sf::Event::Closed)
+            window.close();
+    }
 
-        window.clear();
-        window.draw(sprite);
-        window.display();
-    //}
+    window.clear();
+    window.draw(sprite);
+    window.display();
 }
 
 Graphics::~Graphics() {

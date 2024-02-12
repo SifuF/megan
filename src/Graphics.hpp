@@ -7,18 +7,18 @@
 
 class Graphics {
 public:
-	Graphics(VDP * v);
-	~Graphics();
-	void test();
-	void draw();
+    Graphics(VDP * v);
+    ~Graphics();
+    void update();
+    void draw();
 
 private:
-	sf::RenderWindow window;
-	sf::Texture texture;
-	sf::Sprite sprite;
+    sf::RenderWindow window;
+    sf::Texture texture;
+    sf::Sprite sprite;
 
-	unsigned width;
-	unsigned height;
+    unsigned width;
+    unsigned height;
 
-	VDP * vdp;
+    VDP * vdp;
 };
