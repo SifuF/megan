@@ -5,7 +5,7 @@
 #include <iterator>
 #include <vector>
 
-Bus::Bus() : cpu68000(this), graphics(&vdp) {
+Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp) {
 	std::ifstream input("roms/sonic.bin", std::ios::binary);
 	std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
 	map = std::move(buffer);

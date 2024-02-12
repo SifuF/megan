@@ -8,7 +8,6 @@ class VDP {
 public:
 	VDP();
 
-	void fillRand();
 	void clearScreen();
 	void clearVram();
 	void setup();
