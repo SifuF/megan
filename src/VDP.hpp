@@ -19,7 +19,8 @@ public:
 
 private:
 
-    void drawTile(unsigned x, unsigned y, unsigned t, unsigned c);
+    void drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet);
+    void drawLine(unsigned line, uint8 * tile, unsigned pallet);
 
     uint16 pattern = 0x0000;
     uint16 scrollA = 0xc000;
