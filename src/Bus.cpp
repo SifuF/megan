@@ -14,7 +14,7 @@ Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp) {
     //printMemory(BusItem::Rom, 0x100, 0x200);
     //printMemory(BusItem::Ram, 0, 0xffff);
     printHeader();
-    //cpu68000.reset();
+    cpu68000.reset();
     //cpu68000.fetch();
 
     loop();
@@ -26,6 +26,7 @@ Bus::~Bus() {
 void Bus::loop() {
     vdp.setup();
     while (true) {
+        cpu68000.fetch();
         vdp.buildFrame();
         graphics.draw();
     }
@@ -198,28 +199,29 @@ uint8 Bus::readByte(uint32 addr) {
         //std::cout << "ROM read";
     }
     else if (addr < 0x800000) {
-        std::cout << "Error - Sega CD and 32X space read";
+        std::cout << "Error - Sega CD and 32X space read ";
         return 0;
     }
     else if (addr < 0xA00000) {
-        std::cout << "Error - 32X ? space read";
+        std::cout << "Error - 32X ? space read ";
         return 0;
     }
     else if (addr < 0xA10000) {
-        std::cout << "Z80 space read";
+        std::cout << "Z80 space read ";
     }
     else if (addr < 0xA10020) {
-        std::cout << "IO read";
+        std::cout << "IO read ";
+        return 0; // No TMSS
     }
     else if (addr < 0xFF0000) {
-        std::cout << "Not implemented read yet!";
+        std::cout << "Not implemented read yet! ";
         return 0;
     }
     else if (addr < 0x1000000) {
-        std::cout << "IO read";
+        std::cout << "IO read ";
     }
     else {
-        std::cout << "Error - read above address space!";
+        std::cout << "Error - read above address space! ";
         return 0;
     }
 

@@ -3,6 +3,8 @@
 #include "defs.hpp"
 #include <array>
 #include <bitset>
+#include <cassert>
+#include <cstddef>
 
 #define BYTE 1
 #define WORD 2
@@ -18,7 +20,7 @@ struct Reg {
     };
 };
 
-enum Flag {
+enum Status {
     C = 0,
     V,
     Z,

@@ -24,6 +24,8 @@ void Cpu68000::fetch() {
         const uint16 instruction = bus->readWord(PC);
         PC += 2;
 
+        std::cout << std::hex << instruction << " ";
+
         const uint8 bits0to3 = static_cast<uint8>(instruction >> 12);
         const uint8 bits0to1 = static_cast<uint8>(instruction >> 14);
         const uint8 bits2to3 = static_cast<uint8>((instruction >> 12) & 0x3u);
@@ -31,26 +33,26 @@ void Cpu68000::fetch() {
         const uint8 bit7 = static_cast<uint8>((instruction >> 7) & 0x1u);
         const uint8 bit8 = static_cast<uint8>((instruction >> 8) & 0x1u);
         const uint8 bit9 = static_cast<uint8>((instruction >> 9) & 0x1u);
-        const uint8 bits8to15 = static_cast<uint8>(instruction >> 8);
-        const uint8 bits8to9 = static_cast<uint8>((instruction >> 8) & 0x3u);
-        const uint8 bits10to12 = static_cast<uint8>((instruction >> 10) & 0x7u);
-        const uint8 bits13to15 = static_cast<uint8>((instruction >> 13) & 0x7u);
-        const uint8 bits7to9 = static_cast<uint8>((instruction >> 7) & 0x7u);
-        const uint16 bits4to15 = static_cast<uint16>(instruction >> 4);
-        const uint8 bits4to9 = static_cast<uint8>((instruction >> 4) & 0b00111111);
-        const uint8 bits4to7 = static_cast<uint8>((instruction >> 4) & 0x0b00000111);
-        const uint8 bits12to15 = static_cast<uint8>(instruction >> 12);
-        const uint8 bits4to11 = static_cast<uint8>((instruction >> 4) & 0xFFu);
-        const uint8 bit12 = static_cast<uint8>((instruction >> 12) & 0x1u);
-        const uint8 bit4 = static_cast<uint8>((instruction >> 4) & 0x1u);
-        const uint8 bit5 = static_cast<uint8>((instruction >> 5) & 0x1u);
-        const uint8 bits6to8 = static_cast<uint8>((instruction >> 6) & 0x7u);
-        const uint8 bits6to7 = static_cast<uint8>((instruction >> 6) & 0x3u);
+        const uint8 bits8to15 = static_cast<uint8>(instruction);
+        const uint8 bits8to9 = static_cast<uint8>((instruction >> 6) & 0x3u);
+        const uint8 bits10to12 = static_cast<uint8>((instruction >> 3) & 0x7u);
+        const uint8 bits13to15 = static_cast<uint8>((instruction) & 0x7u);
+        const uint8 bits7to9 = static_cast<uint8>((instruction >> 6) & 0x7u);
+        const uint16 bits4to15 = static_cast<uint16>((instruction) & 0x0FFFu);
+        const uint8 bits4to9 = static_cast<uint8>((instruction >> 6) & 63u);
+        const uint8 bits4to7 = static_cast<uint8>((instruction >> 8) & 0xF);
+        const uint8 bits12to15 = static_cast<uint8>((instruction) & 0xF);
+        const uint8 bits4to11 = static_cast<uint8>(instruction >> 4);
+        const uint8 bit12 = static_cast<uint8>((instruction >> 3) & 0x1u);
+        const uint8 bit4 = static_cast<uint8>((instruction >> 11) & 0x1u);
+        const uint8 bit5 = static_cast<uint8>((instruction >> 10) & 0x1u);
+        const uint8 bits6to8 = static_cast<uint8>((instruction >> 7) & 0x7u);
+        const uint8 bits6to7 = static_cast<uint8>((instruction >> 8) & 0x3u);
         const uint8 bits7to8 = static_cast<uint8>((instruction >> 7) & 0x3u);
-        const uint8 bits10to11 = static_cast<uint8>((instruction >> 10) & 0x3u);
-        const uint8 bits7to11 = static_cast<uint8>((instruction >> 7) & 0b00011111);
-        const uint8 bits11to12 = static_cast<uint8>((instruction >> 11) & 0x3u);
-        const uint8 bit10 = static_cast<uint8>((instruction >> 10) & 0x1u);
+        const uint8 bits10to11 = static_cast<uint8>((instruction >> 4) & 0x3u);
+        const uint8 bits7to11 = static_cast<uint8>((instruction >> 4) & 31u);
+        const uint8 bits11to12 = static_cast<uint8>((instruction >> 3) & 0x3u);
+        const uint8 bit10 = static_cast<uint8>((instruction >> 5) & 0x1u);
 
         if (bits0to3 == 0) {
             if (bit7 == 0) {
@@ -372,7 +374,6 @@ void Cpu68000::fetch() {
             std::cout << "Error in bits0to3" << std::endl;
         }
 
-        std::cout << std::hex << instruction << std::endl;
 }
 
 void Cpu68000::ORItoCCR() {}
@@ -380,7 +381,19 @@ void Cpu68000::ORItoSR() {}
 void Cpu68000::ORI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ANDItoCCR() {}
 void Cpu68000::ANDItoSR() {}
-void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
+    const uint16 value = bus->readWord(PC);
+    PC += 2;
+    D[0].b &= static_cast<uint8>(value);
+    if (D[0].b == 0) {
+        SR.set(Status::Z, true);
+    }
+    else {
+        SR.set(Status::Z, false);
+    }
+
+    std::cout << "andi.b " << std::hex << value << " " << int(D[0].b) << std::endl;
+}
 void Cpu68000::SUBI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {}
@@ -397,7 +410,38 @@ void Cpu68000::BCHG(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BCLR(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BSET(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEA(uint8 bits2to3, uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10to12, uint8 bits13to15) {
+    //std::cout << int(bits2to3) << std::endl; // 1 = move.b
+    //std::cout << int(bits4to6) << std::endl;  // 0 = to reg 0
+    //std::cout << int(bits7to9) << std::endl;  // 0 = data reg
+    //std::cout << int(bits10to12) << std::endl; // 7 = see below
+    //std::cout << int(bits13to15) << std::endl; // 1 = Absolute long
+    if(bits2to3==1) {
+        const uint32 value = bus->readLong(PC);
+        PC += 4;
+        D[0].l = bus->readByte(value);
+
+        std::cout << "move.b " << std::hex << D[0].l << std::endl;
+    }
+    ////////////////
+
+    //std::cout << int(bits2to3) << std::endl; // 2 = move.l
+    //std::cout << int(bits4to6) << std::endl;  // 1 = to reg 1 *
+    //std::cout << int(bits7to9) << std::endl;  // 7 = absolute long
+    //std::cout << int(bits10to12) << std::endl; // 7 = absolute long
+    //std::cout << int(bits13to15) << std::endl; // 1 = immediate
+    if(bits2to3==2){
+        const uint32 data = bus->readLong(PC);
+        PC += 4;
+        const uint32 addr = bus->readLong(PC);
+        PC += 4;
+
+        bus->writeLong(addr, data);
+
+        std::cout << "move.l " << std::hex << int(addr) << " " << int(data) << std::endl;
+    
+    }
+}
 void Cpu68000::ILLEGAL() {}
 void Cpu68000::TAS(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::TST(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
@@ -415,7 +459,15 @@ void Cpu68000::RTR() {}
 void Cpu68000::JSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::JMP(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEM(uint8 bit5, uint8 bit9, uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {
+    //a0
+    //7
+    //1 abs long
+    const uint16 value = bus->readLong(PC);
+    PC += 4;
+    A[0].l = value;
+    std::cout << "lea: " << value << std::endl;
+}
 void Cpu68000::CHK(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::EXT(uint8 bit9, uint8 bits13to15) {}
 void Cpu68000::NBCD(uint8 bits10to12, uint8 bits13to15) {}
@@ -434,7 +486,13 @@ void Cpu68000::SUBQ(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits
 void Cpu68000::ADDQ(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BRA(uint8 bits8to15) {}
 void Cpu68000::BSR(uint8 bits8to15) {}
-void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {}
+void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {
+    if (bits4to7 == 7) { // EQ
+        const uint16 value = bus->readWord(PC);
+        PC += 2;
+        std::cout << "beq displacement: " << int(bits8to15) << " data: " << value << std::endl;
+    }
+}
 void Cpu68000::MOVEQ(uint8 bits4to6, uint8 bits8to15) {}
 void Cpu68000::DIVS(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::DIVU(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
