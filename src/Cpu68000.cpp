@@ -54,324 +54,364 @@ void Cpu68000::fetch() {
         const uint8 bits11to12 = static_cast<uint8>((instruction >> 3) & 0x3u);
         const uint8 bit10 = static_cast<uint8>((instruction >> 5) & 0x1u);
 
-        if (bits0to3 == 0) {
-            if (bit7 == 0) {
-                if (bits4to6 == 0) {
-                    if (bits8to15 == 0b00111100) {
-                        ORItoCCR();
+        switch (bits0to3) {
+            case 0b0000: {
+                if (bit7 == 0) {
+                    switch (bits4to6) {
+                        case 0: {
+                            if (bits8to15 == 0b00111100) {
+                                ORItoCCR();
+                            }
+                            else if (bits8to15 == 0b01111100) {
+                                ORItoSR();
+                            }
+                            else {
+                                ORI(bits8to9, bits10to12, bits13to15);
+                            }
+                            break;
+                        }
+                        case 1: {
+                            if (bits8to15 == 0b00111100) {
+                                ANDItoCCR();
+                            }
+                            else if (bits8to15 == 0b01111100) {
+                                ANDItoSR();
+                            }
+                            else {
+                                ANDI(bits8to9, bits10to12, bits13to15);
+                            }
+                            break;
+                        }
+                        case 2: {
+                            SUBI(bits8to9, bits10to12, bits13to15);
+                            break;
+                        }
+                        case 3: {
+                            ADDI(bits8to9, bits10to12, bits13to15);
+                            break;
+                        }
+                        case 4: {
+                            switch (bits8to9) {
+                                case 0: {
+                                    BTST(bits10to12, bits13to15);
+                                    break;
+                                }
+                                case 1: {
+                                    BCHG(bits10to12, bits13to15);
+                                    break;
+                                }
+                                case 2: {
+                                    BCLR(bits10to12, bits13to15);
+                                    break;
+                                }
+                                default: { // 3
+                                    BSET(bits10to12, bits13to15);
+                                    break;
+                                }
+                            }
+                            break;
+                        }
+                        case 5: {
+                            if (bits8to15 == 0b00111100) {
+                                EORItoCCR();
+                            }
+                            else if (bits8to15 == 0b01111100) {
+                                EORItoSR();
+                            }
+                            else {
+                                EORI(bits8to9, bits10to12, bits13to15);
+                            }
+                            break;
+                        }
+                        case 6: {
+                            CMPI(bits8to9, bits10to12, bits13to15);
+                            break;
+                        }
+                        default: {
+                            std::cout << "Error" << std::endl;
+                            break;
+                        }
                     }
-                    else if (bits8to15 == 0b01111100) {
-                        ORItoSR();
-                    }
-                    else {
-                        ORI(bits8to9, bits10to12, bits13to15);
-                    }
-                }
-                else if (bits4to6 == 1) {
-                    if (bits8to15 == 0b00111100) {
-                        ANDItoCCR();
-                    }
-                    else if (bits8to15 == 0b01111100) {
-                        ANDItoSR();
-                    }
-                    else {
-                        ANDI(bits8to9, bits10to12, bits13to15);
-                    }
-                }
-                else if (bits4to6 == 2) {
-                    SUBI(bits8to9, bits10to12, bits13to15);
-                }
-                else if (bits4to6 == 3) {
-                    ADDI(bits8to9, bits10to12, bits13to15);
-                }
-                else if (bits4to6 == 4) {
-                    if (bits8to9 == 0) {
-                        BTST(bits10to12, bits13to15);
-                    }
-                    else if (bits8to9 == 1) {
-                        BCHG(bits10to12, bits13to15);
-                    }
-                    else if (bits8to9 == 2) {
-                        BCLR(bits10to12, bits13to15);
-                    }
-                    else {
-                        BSET(bits10to12, bits13to15);
-                    }
-                }
-                else if (bits4to6 == 5) {
-                    if (bits8to15 == 0b00111100) {
-                        EORItoCCR();
-                    }
-                    else if (bits8to15 == 0b01111100) {
-                        EORItoSR();
-                    }
-                    else {
-                        EORI(bits8to9, bits10to12, bits13to15);
-                    }
-                }
-                else if (bits4to6 == 6) {
-                    CMPI(bits8to9, bits10to12, bits13to15);
                 }
                 else {
-                    std::cout << "Error" << std::endl;
+                    if (bits10to12 == 1) {
+                        MOVEP(bits4to6, bit8, bit9, bits13to15);
+                    }
+                    else {
+                        switch (bits8to9) {
+                            case 0: {
+                                BTST(bits4to6, bits10to12, bits13to15);
+                                break;
+                            }
+                            case 1: {
+                                BCHG(bits4to6, bits10to12, bits13to15);
+                                break;
+                            }
+                            case 2: {
+                                BCLR(bits4to6, bits10to12, bits13to15);
+                                break;
+                            }
+                            default: {
+                                BSET(bits4to6, bits10to12, bits13to15);
+                                break;
+                            }
+                        }
+                    }
                 }
+                break;
             }
-            else {
-                if (bits10to12 == 1) {
-                    MOVEP(bits4to6, bit8, bit9, bits13to15);
-                }
-                else if (bits8to9 == 0) {
-                    BTST(bits4to6, bits10to12, bits13to15);
-                }
-                else if (bits8to9 == 1) {
-                    BCHG(bits4to6, bits10to12, bits13to15);
-                }
-                else if (bits8to9 == 2) {
-                    BCLR(bits4to6, bits10to12, bits13to15);
+            case 0b0001: [[fallthrough]];
+            case 0b0010: [[fallthrough]];
+            case 0b0011: {
+                if (bits7to9 == 1) {
+                    MOVEA(bits2to3, bits4to6, bits10to12, bits13to15);
                 }
                 else {
-                    BSET(bits4to6, bits10to12, bits13to15);
+                    MOVE(bits2to3, bits4to6, bits7to9, bits10to12, bits13to15);
                 }
+                break;
             }
-        }
-        else if (bits0to3 < 4) {
-            if (bits7to9 == 1) {
-                MOVEA(bits2to3, bits4to6, bits10to12, bits13to15);
+            case 0b0100: {
+                if (bits4to15 == 0b101011111100) {
+                    ILLEGAL();
+                }
+                else if (bits4to9 == 0b101011) {
+                    TAS(bits10to12, bits13to15);
+                }
+                else if (bits4to7 == 0b1010) {
+                    TST(bits8to9, bits10to12, bits13to15);
+                }
+                else if (bits4to11 == 0b11100100) {
+                    TRAP(bits12to15);
+                }
+                else if (bits4to11 == 0b11001010 && bit12 == 1) {
+                    LINK(bits13to15);
+                }
+                else if (bits4to11 == 0b11001011 && bit12 == 1) {
+                    ULINK(bits13to15);
+                }
+                else if (bits4to11 == 0b11100110) {
+                    MOVEUSP(bit12, bits13to15);
+                }
+                else if (bits4to15 == 0b111001110000) {
+                    RESET();
+                }
+                else if (bits4to15 == 0b111001110001) {
+                    NOP();
+                }
+                else if (bits4to15 == 0b111001110010) {
+                    STOP();
+                }
+                else if (bits4to15 == 0b111001110011) {
+                    RTE();
+                }
+                else if (bits4to15 == 0b111001110101) {
+                    RTS();
+                }
+                else if (bits4to15 == 0b111001110110) {
+                    TRAPV();
+                }
+                else if (bits4to15 == 0b111001110111) {
+                    RTR();
+                }
+                else if (bits4to9 == 0b111010) {
+                    JSR(bits10to12, bits13to15);
+                }
+                else if (bits4to15 == 0b111011) {
+                    JMP(bits10to12, bits13to15);
+                }
+                else if (bit4 == 1 && bits6to8 == 1) {
+                    MOVEM(bit5, bit9, bits10to12, bits13to15);
+                }
+                else if (bits7to9 == 7) {
+                    LEA(bits4to6, bits10to12, bits13to15);
+                }
+                else if (bits7to9 == 6) {
+                    CHK(bits4to6, bits10to12, bits13to15);
+                }
+                else if (bits4to6 == 4 && bits7to8 == 1 && bits10to12 == 0) {
+                    EXT(bit9, bits13to15);
+                }
+                else if (bits4to6 == 4 && bits7to9 == 0) {
+                    NBCD(bits10to12, bits13to15);
+                }
+                else if (bits4to6 == 4 && bits7to9 == 1 && bits10to12 == 0) {
+                    SWAP(bits13to15);
+                }
+                else if (bits4to6 == 4 && bits7to9 == 1) {
+                    PEA(bits10to12, bits13to15);
+                }
+                else if (bits8to9 == 3) {
+                    if (bits4to7 == 0) {
+                        MOVEfromSR(bits10to12, bits13to15);
+                    }
+                    else if (bits4to7 == 4) {
+                        MOVEtoCCR(bits10to12, bits13to15);
+                    }
+                    else if (bits4to7 == 6) {
+                        MOVEtoSR(bits10to12, bits13to15);
+                    }
+                }
+                else {
+                    if (bits4to7 == 0) {
+                        NEGX(bits8to9, bits10to12, bits13to15);
+                    }
+                    else if (bits4to7 == 2) {
+                        CLR(bits8to9, bits10to12, bits13to15);
+                    }
+                    else if (bits4to7 == 4) {
+                        NEG(bits8to9, bits10to12, bits13to15);
+                    }
+                    else if (bits4to7 == 6) {
+                        NOT(bits8to9, bits10to12, bits13to15);
+                    }
+                }
+                break;
             }
-            else {
-                MOVE(bits2to3, bits4to6, bits7to9, bits10to12, bits13to15);
+            case 5: {
+                if (bits8to9 == 3) {
+                    if (bits10to12 == 1) {
+                        DBcc(bits4to7, bits13to15);
+                    }
+                    else {
+                        Scc(bits4to7, bits10to12, bits13to15);
+                    }
+                }
+                else {
+                    if (bit7 == 1) {
+                        SUBQ(bits4to6, bits8to9, bits10to12, bits13to15);
+                    }
+                    else {
+                        ADDQ(bits4to6, bits8to9, bits10to12, bits13to15);
+                    }
+                }
+                break;
             }
-        }
-        else if (bits0to3 == 4) {
-            if (bits4to15 == 0b101011111100) {
-                ILLEGAL();
-            }
-            else if (bits4to9 == 0b101011) {
-                TAS(bits10to12, bits13to15);
-            }
-            else if (bits4to7 == 0b1010) {
-                TST(bits8to9, bits10to12, bits13to15);
-            }
-            else if (bits4to7 == 0b11100100) {
-                TRAP(bits12to15);
-            }
-            else if (bits4to11 == 0b11001010 && bit12 == 1) {
-                LINK(bits13to15);
-            }
-            else if (bits4to11 == 0b11001011 && bit12 == 1) {
-                ULINK(bits13to15);
-            }
-            else if (bits4to11 == 0b11100110) {
-                MOVEUSP(bit12, bits13to15);
-            }
-            else if (bits4to15 == 0b111001110000) {
-                RESET();
-            }
-            else if (bits4to15 == 0b111001110001) {
-                NOP();
-            }
-            else if (bits4to15 == 0b111001110010) {
-                STOP();
-            }
-            else if (bits4to15 == 0b111001110011) {
-                RTE();
-            }
-            else if (bits4to15 == 0b111001110101) {
-                RTS();
-            }
-            else if (bits4to15 == 0b111001110110) {
-                TRAPV();
-            }
-            else if (bits4to15 == 0b111001110111) {
-                RTR();
-            }
-            else if (bits4to9 == 0b111010) {
-                JSR(bits10to12, bits13to15);
-            }
-            else if (bits4to15 == 0b111011) {
-                JMP(bits10to12, bits13to15);
-            }
-            else if (bit4 == 1 && bits6to8 == 1) {
-                MOVEM(bit5, bit9, bits10to12, bits13to15);
-            }
-            else if (bits7to9 == 7) {
-                LEA(bits4to6, bits10to12, bits13to15);
-            }
-            else if (bits7to9 == 6) {
-                CHK(bits4to6, bits10to12, bits13to15);
-            }
-            else if (bits4to6 == 4 && bits7to8 == 1 && bits10to12 == 0) {
-                EXT(bit9, bits13to15);
-            }
-            else if (bits4to6 == 4 && bits7to9 == 0) {
-                NBCD(bits10to12, bits13to15);
-            }
-            else if (bits4to6 == 4 && bits7to9 == 1 && bits10to12 == 0) {
-                SWAP(bits13to15);
-            }
-            else if (bits4to6 == 4 && bits7to9 == 1) {
-                PEA(bits10to12, bits13to15);
-            }
-            else if (bits8to9 == 3) {
+            case 6: {
                 if (bits4to7 == 0) {
-                    MOVEfromSR(bits10to12, bits13to15);
+                    BRA(bits8to15);
                 }
-                else if (bits4to7 == 4) {
-                    MOVEtoCCR(bits10to12, bits13to15);
-                }
-                else if (bits4to7 == 6) {
-                    MOVEtoSR(bits10to12, bits13to15);
-                }
-            }
-            else {
-                if (bits4to7 == 0) {
-                    NEGX(bits8to9, bits10to12, bits13to15);
-                }
-                else if (bits4to7 == 2) {
-                    CLR(bits8to9, bits10to12, bits13to15);
-                }
-                else if (bits4to7 == 4) {
-                    NEG(bits8to9, bits10to12, bits13to15);
-                }
-                else if (bits4to7 == 6) {
-                    NOT(bits8to9, bits10to12, bits13to15);
-                }
-            }
-        }
-        else if (bits0to3 == 5) {
-            if (bits8to9 == 3) {
-                if (bits10to12 == 1) {
-                    DBcc(bits4to7, bits13to15);
+                else if (bits4to7 == 1) {
+                    BSR(bits8to15);
                 }
                 else {
-                    Scc(bits4to7, bits10to12, bits13to15);
+                    Bcc(bits4to7, bits8to15);
                 }
+                break;
             }
-            else {
-                if (bit7 == 1) {
-                    SUBQ(bits4to6, bits8to9, bits10to12, bits13to15);
+            case 7: {
+                MOVEQ(bits4to6, bits8to15);
+                break;
+            }
+            case 8: {
+                if (bits8to9 == 3) {
+                    if (bit7 == 1) {
+                        DIVS(bits4to6, bits8to9, bits10to12, bits13to15);
+                    }
+                    else {
+                        DIVU(bits4to6, bits8to9, bits10to12, bits13to15);
+                    }
                 }
-                else {
-                    ADDQ(bits4to6, bits8to9, bits10to12, bits13to15);
-                }
-            }
-        }
-        else if (bits0to3 == 6) {
-            if (bits4to7 == 0) {
-                BRA(bits8to15);
-            }
-            else if (bits4to7 == 1) {
-                BSR(bits8to15);
-            }
-            else {
-                Bcc(bits4to7, bits8to15);
-            }
-        }
-        else if (bits0to3 == 7) {
-            MOVEQ(bits4to6, bits8to15);
-        }
-        else if (bits0to3 == 8) {
-            if (bits8to9 == 3) {
-                if (bit7 == 1) {
-                    DIVS(bits4to6, bits8to9, bits10to12, bits13to15);
+                else if (bits7to11 == 16) {
+                    SBCD(bits4to6, bit12, bits13to15);
                 }
                 else {
-                    DIVU(bits4to6, bits8to9, bits10to12, bits13to15);
+                    OR(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
                 }
+                break;
             }
-            else if (bits7to11 == 16) {
-                SBCD(bits4to6, bit12, bits13to15);
+            case 9: {
+                if (bits8to9 == 3) {
+                    SUBA(bits4to6, bit7, bits10to12, bits13to15);
+                }
+                else if (bit7 == 1 && bits10to11 == 0) {
+                    SUBX(bits4to6, bits8to9, bit12, bits13to15);
+                }
+                else {
+                    SUB(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
+                }
+                break;
             }
-            else {
-                OR(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
+            case 11: {
+                if (bits8to9 == 3) {
+                    CMPA(bits4to6, bit7, bits10to12, bits13to15);
+                }
+                else if (bits10to12 == 1) {
+                    CMPM(bits4to6, bits8to9, bits13to15);
+                }
+                else if (bit7 == 0) {
+                    CMP(bits4to6, bits8to9, bits10to12, bits13to15);
+                }
+                else {
+                    EOR(bits4to6, bits8to9, bits10to12, bits13to15);
+                }
+                break;
             }
-        }
-        else if (bits0to3 == 9) {
-            if (bits8to9 == 3) {
-                SUBA(bits4to6, bit7, bits10to12, bits13to15);
+            case 12: {
+                if (bits7to11 == 16) {
+                    ABCD(bits4to6, bit12, bits13to15);
+                }
+                else if (bit7 == 0 && bits8to9 == 3) {
+                    MULU(bits4to6, bits10to12, bits13to15);
+                }
+                else if (bit7 == 1 && bits8to9 == 3) {
+                    MULS(bits4to6, bits10to12, bits13to15);
+                }
+                else if (bit7 == 1 && bits10to11 == 0) {
+                    EXG(bits4to6, bits8to9, bit12, bits13to15);
+                }
+                else {
+                    AND(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
+                }
+                break;
             }
-            else if (bit7 == 1 && bits10to11 == 0) {
-                SUBX(bits4to6, bits8to9, bit12, bits13to15);
-            }
-            else {
-                SUB(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
-            }
-        }
-        else if (bits0to3 == 11) {
-            if (bits8to9 == 3) {
-                CMPA(bits4to6, bit7, bits10to12, bits13to15);
-            }
-            else if (bits10to12 == 1) {
-                CMPM(bits4to6, bits8to9, bits13to15);
-            }
-            else if (bit7 == 0) {
-                CMP(bits4to6, bits8to9, bits10to12, bits13to15);
-            }
-            else {
-                EOR(bits4to6, bits8to9, bits10to12, bits13to15);
-            }
-        }
-        else if (bits0to3 == 12) {
-            if (bits7to11 == 16) {
-                ABCD(bits4to6, bit12, bits13to15);
-            }
-            else if (bit7 == 0 && bits8to9 == 3) {
-                MULU(bits4to6, bits10to12, bits13to15);
-            }
-            else if (bit7 == 1 && bits8to9 == 3) {
-                MULS(bits4to6, bits10to12, bits13to15);
-            }
-            else if (bit7 == 1 && bits10to11 == 0) {
-                EXG(bits4to6, bits8to9, bit12, bits13to15);
-            }
-            else {
-                AND(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
-            }
-        }
-        else if (bits0to3 == 13) {
-            if (bits8to9 == 3) {
-                ADDA(bits4to6, bit7, bits10to12, bits13to15);
-            }
-            else if (bit7 == 1 && bits10to11 == 0) {
-                ADDX(bits4to6, bits8to9, bit12, bits13to15);
-            }
-            else {
-                ADD(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
-            }
+            case 13: {
+                if (bits8to9 == 3) {
+                    ADDA(bits4to6, bit7, bits10to12, bits13to15);
+                }
+                else if (bit7 == 1 && bits10to11 == 0) {
+                    ADDX(bits4to6, bits8to9, bit12, bits13to15);
+                }
+                else {
+                    ADD(bits4to6, bit7, bits8to9, bits10to12, bits13to15);
+                }
+                break;
 
-        }
-        else if (bits0to3 == 14) {
-            if (bits8to9 == 3) {
-                if (bits4to6 == 0) {
-                    ASd(bit7, bits10to12, bits13to15);
-                }
-                else if (bits4to6 == 1) {
-                    LSd(bit7, bits10to12, bits13to15);
-                }
-                else if (bits4to6 == 2) {
-                    ROXd(bit7, bits10to12, bits13to15);
+            }
+            case 14: {
+                if (bits8to9 == 3) {
+                    if (bits4to6 == 0) {
+                        ASd(bit7, bits10to12, bits13to15);
+                    }
+                    else if (bits4to6 == 1) {
+                        LSd(bit7, bits10to12, bits13to15);
+                    }
+                    else if (bits4to6 == 2) {
+                        ROXd(bit7, bits10to12, bits13to15);
+                    }
+                    else {
+                        ROd(bit7, bits10to12, bits13to15);
+                    }
                 }
                 else {
-                    ROd(bit7, bits10to12, bits13to15);
+                    if (bits11to12 == 0) {
+                        ASd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
+                    }
+                    else if (bits11to12 == 1) {
+                        LSd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
+                    }
+                    else if (bits11to12 == 2) {
+                        ROXd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
+                    }
+                    else {
+                        ROd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
+                    }
                 }
+                break;
             }
-            else {
-                if (bits11to12 == 0) {
-                    ASd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
-                }
-                else if (bits11to12 == 1) {
-                    LSd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
-                }
-                else if (bits11to12 == 2) {
-                    ROXd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
-                }
-                else {
-                    ROd2(bits4to6, bit7, bits8to9, bit10, bits13to15);
-                }
+            default: {
+                std::cout << "Error in bits0to3" << std::endl;
             }
-        }
-        else {
-            std::cout << "Error in bits0to3" << std::endl;
         }
 
 }
@@ -411,25 +451,166 @@ void Cpu68000::BCLR(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BSET(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEA(uint8 bits2to3, uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10to12, uint8 bits13to15) {
-    //std::cout << int(bits2to3) << std::endl; // 1 = move.b
-    //std::cout << int(bits4to6) << std::endl;  // 0 = to reg 0
-    //std::cout << int(bits7to9) << std::endl;  // 0 = data reg
-    //std::cout << int(bits10to12) << std::endl; // 7 = see below
-    //std::cout << int(bits13to15) << std::endl; // 1 = Absolute long
-    if(bits2to3==1) {
-        const uint32 value = bus->readLong(PC);
-        PC += 4;
-        D[0].l = bus->readByte(value);
+    std::cout << "move";
 
-        std::cout << "move.b " << std::hex << D[0].l << std::endl;
-    }
+    // instruction: 1039
+    // bits2to3 == 1 => move.b
+    // bits4to6 == 0 => to reg 0
+    // bits7to9 == 0 => data reg
+    // bits10to12 == 7 => from see below
+    // bits13to15 == 1 => Absolute long
+
+    // instruction: 23fc
+    // bits2to3 == 2 => move.l
+    // bits4to6 == 1 => (would be if not for below) to reg 1
+    // bits7to9 == 7 => absolute long (write to memory address)
+    // bits10to12 == 7 => from see below
+    // bits13to15 == 1 => immediate
+
+    const auto type = static_cast<int>(bits2to3);
+    if(type == 1) std::cout << ".b ";
+    else if (type == 2) std::cout << ".l ";
+    else if (type == 3) std::cout << ".w ";
+
+    auto writeReg = [this](bool data, int reg, uint32 value, int type) {
+        switch (type) {
+            case 1: {
+                if (data) {
+                    D[reg].b = static_cast<uint8>(value);
+                }
+                else {
+                    A[reg].b = static_cast<uint8>(value);
+                }
+                break;
+            }
+            case 2: {
+                if (data) {
+                    D[reg].l = value;
+                }
+                else {
+                    A[reg].l = value;
+                }
+                break;
+            }
+            case 3: {
+                if (data) {
+                    D[reg].w = static_cast<uint16>(value);
+                }
+                else {
+                    A[reg].w = static_cast<uint16>(value);
+                }
+                break;
+            }
+            default: {
+                throw(std::exception("Unknown register size!"));
+                break;
+            }
+        }
+    };
+
+    //     dst           src
+    // R R R M M M    M M M R R R
+    auto regMem = [this, type, &writeReg](uint8 regBits, uint8 memBits, bool writing, uint32 value) -> uint32 {
+        const std::string label = writing ? "dst:" : "src:";
+        std::cout << label;
+        const auto reg = static_cast<int>(regBits);
+        switch (memBits) {
+            case 0b000: {
+                std::cout << "D[" << reg << "] ";
+                if (writing) {
+                    writeReg(true, reg, value, type);
+                }
+                else {
+                
+                }
+                break;
+            }
+            case 0b001: {
+                std::cout << "A[" << reg << "] ";
+                break;
+            }
+            case 0b010: {
+                std::cout << "(A[" << reg << "]) ";
+                break;
+            }
+            case 0b011: {
+                std::cout << "(A[" << reg << "])+ ";
+                break;
+
+            }
+            case 0b100: {
+                std::cout << "-(A[" << reg << "]) ";
+                break;
+            }
+            case 0b101: {
+                std::cout << "displacement(A[" << reg << "]) ";
+                break;
+            }
+            case 0b110: {
+                std::cout << "index(A[" << reg << "]) ";
+                break;
+            }
+            case 0b111: {
+                switch (reg) {
+                    case 0b010: {
+                        std::cout << "PC.displacement ";
+                        break;
+                    }
+                    case 0b011: {
+                        std::cout << "PC.index ";
+                        break;
+                    }
+                    case 0b000: {
+                        std::cout << "Abs.w ";
+                        break;
+                    }
+                    case 0b001: {
+                        if (writing) {
+                            std::cout << "Abs.l:";
+                            const uint32 addr = bus->readLong(PC);
+                            PC += 4;
+                            std::cout << "(" << static_cast<int>(addr) << ") ";
+                            bus->writeLong(addr, value);
+
+                        }
+                        else {
+                            std::cout << "Abs.l:";
+                            const uint32 readValue = bus->readLong(PC);
+                            PC += 4;
+                            std::cout << "(" << static_cast<int>(readValue) << ") ";
+                            return readValue;
+                        }
+                        break;
+                    }
+                    case 0b100: {
+                        if (writing) {
+                            // error?
+                        }
+                        else {
+                            std::cout << "immediate:";
+                            const uint32 readValue = bus->readLong(PC);
+                            PC += 4;
+                            std::cout << static_cast<int>(readValue) << " ";
+                            return readValue;
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+    };
+
+    // src
+    uint32 srcValue = regMem(bits13to15, bits10to12, false, 0);
+   
+    // dst 
+    regMem(bits4to6, bits7to9, true, srcValue);
+
+    std::cout << std::endl;
+
     ////////////////
 
-    //std::cout << int(bits2to3) << std::endl; // 2 = move.l
-    //std::cout << int(bits4to6) << std::endl;  // 1 = to reg 1 *
-    //std::cout << int(bits7to9) << std::endl;  // 7 = absolute long
-    //std::cout << int(bits10to12) << std::endl; // 7 = absolute long
-    //std::cout << int(bits13to15) << std::endl; // 1 = immediate
+    
     if(bits2to3==2){
         const uint32 data = bus->readLong(PC);
         PC += 4;
