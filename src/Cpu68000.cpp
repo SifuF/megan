@@ -30,9 +30,9 @@ void Cpu68000::fetch() {
         const uint8 bits0to1 = static_cast<uint8>(instruction >> 14);
         const uint8 bits2to3 = static_cast<uint8>((instruction >> 12) & 0x3u);
         const uint8 bits4to6 = static_cast<uint8>((instruction >> 9) & 0x7u);
-        const uint8 bit7 = static_cast<uint8>((instruction >> 7) & 0x1u);
-        const uint8 bit8 = static_cast<uint8>((instruction >> 8) & 0x1u);
-        const uint8 bit9 = static_cast<uint8>((instruction >> 9) & 0x1u);
+        const uint8 bit7 = static_cast<uint8>((instruction >> 8) & 0x1u);
+        const uint8 bit8 = static_cast<uint8>((instruction >> 7) & 0x1u);
+        const uint8 bit9 = static_cast<uint8>((instruction >> 6) & 0x1u);
         const uint8 bits8to15 = static_cast<uint8>(instruction);
         const uint8 bits8to9 = static_cast<uint8>((instruction >> 6) & 0x3u);
         const uint8 bits10to12 = static_cast<uint8>((instruction >> 3) & 0x7u);
@@ -54,7 +54,7 @@ void Cpu68000::fetch() {
         const uint8 bits11to12 = static_cast<uint8>((instruction >> 3) & 0x3u);
         const uint8 bit10 = static_cast<uint8>((instruction >> 5) & 0x1u);
 
-        switch (bits0to3) {
+         switch (bits0to3) {
             case 0b0000: {
                 if (bit7 == 0) {
                     switch (bits4to6) {
@@ -217,7 +217,7 @@ void Cpu68000::fetch() {
                 else if (bits4to9 == 0b111010) {
                     JSR(bits10to12, bits13to15);
                 }
-                else if (bits4to15 == 0b111011) {
+                else if (bits4to9 == 0b111011) {
                     JMP(bits10to12, bits13to15);
                 }
                 else if (bit4 == 1 && bits6to8 == 1) {
@@ -435,7 +435,68 @@ void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     std::cout << "andi.b " << std::hex << value << " " << int(D[0].b) << std::endl;
 }
 void Cpu68000::SUBI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
+    std::cout << "addi";
+    const auto type = static_cast<int>(bits8to9);
+    if (type == 0) std::cout << ".b ";
+    else if (type == 1) std::cout << ".w ";
+    else if (type == 2) std::cout << ".l ";
+
+    auto writeReg = [this, type, bits13to15](bool data, int reg, uint32 value) {
+        switch (type) {
+            case 0: {
+                if (data) {
+                    D[reg].b += value;
+                }
+                else {
+                    A[reg].b += value;
+                }
+            }
+            case 1: {
+                if (data) {
+                    D[reg].w += value;
+                }
+                else {
+                    A[reg].w += value;
+                }
+            }
+            case 2: {
+                if (data) {
+                    D[reg].l += value;
+                }
+                else {
+                    A[reg].l += value;
+                }
+            }
+        }
+    };
+
+    const auto reg = static_cast<int>(bits13to15);
+    const uint32 value = bus->readLong(PC);
+    PC += 4;
+    std::cout << value << ", ";
+    switch (bits10to12) {
+        case 0b000: {
+            std::cout << "D[" << reg << "]";
+            writeReg(true, reg, value);
+            break;
+        }
+        case 0b001: {
+            std::cout << "A[" << reg << "]";
+            writeReg(false, reg, value);
+            break;
+        }
+        case 0b010: {
+            std::cout << "(" << A[reg].l << ")";
+            break;
+        }
+        default: {
+            std::cout << "ADDI needs upgrade!";
+            break; 
+        }
+    }
+    std::cout << std::endl;
+}
 void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BCHG(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BCLR(uint8 bits10to12, uint8 bits13to15) {}
@@ -472,7 +533,7 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
     else if (type == 2) std::cout << ".l ";
     else if (type == 3) std::cout << ".w ";
 
-    auto writeReg = [this](bool data, int reg, uint32 value, int type) {
+    auto writeReg = [this, type](bool data, int reg, uint32 value, int type) {
         switch (type) {
             case 1: {
                 if (data) {
@@ -588,8 +649,19 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
                         }
                         else {
                             std::cout << "immediate:";
-                            const uint32 readValue = bus->readLong(PC);
-                            PC += 4;
+                            uint32 readValue = 0;
+                            if (type == 1) { // b
+                            
+                            }
+                            else if (type == 2) { // l
+                                readValue = bus->readLong(PC);
+                                PC += 4;
+                            }
+                            else if (type == 3) { // w
+                                readValue = bus->readWord(PC);
+                                PC += 2;
+                            }
+                            
                             std::cout << static_cast<int>(readValue) << " ";
                             return readValue;
                         }
@@ -607,21 +679,6 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
     regMem(bits4to6, bits7to9, true, srcValue);
 
     std::cout << std::endl;
-
-    ////////////////
-
-    
-    if(bits2to3==2){
-        const uint32 data = bus->readLong(PC);
-        PC += 4;
-        const uint32 addr = bus->readLong(PC);
-        PC += 4;
-
-        bus->writeLong(addr, data);
-
-        std::cout << "move.l " << std::hex << int(addr) << " " << int(data) << std::endl;
-    
-    }
 }
 void Cpu68000::ILLEGAL() {}
 void Cpu68000::TAS(uint8 bits10to12, uint8 bits13to15) {}
@@ -638,16 +695,26 @@ void Cpu68000::RTS() {}
 void Cpu68000::TRAPV() {}
 void Cpu68000::RTR() {}
 void Cpu68000::JSR(uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::JMP(uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::JMP(uint8 bits10to12, uint8 bits13to15) {
+    const uint32 value = bus->readLong(PC);
+    PC = value;
+    std::cout << "jmp " << static_cast<int>(value) << std::endl;
+}
 void Cpu68000::MOVEM(uint8 bit5, uint8 bit9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {
     //a0
     //7
     //1 abs long
-    const uint16 value = bus->readLong(PC);
-    PC += 4;
-    A[0].l = value;
-    std::cout << "lea: " << value << std::endl;
+    const int reg = static_cast<int>(bits4to6);
+    std::cout << "lea ";
+    if (bits10to12 == 7) { // should do always?
+        if (bits13to15 == 1) { // Abs.l
+            const uint32 value = bus->readLong(PC);
+            PC += 4;
+            A[reg].l = value;
+            std::cout << value << ", A[" << reg << "] " << std::endl;
+        }
+    }
 }
 void Cpu68000::CHK(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::EXT(uint8 bit9, uint8 bits13to15) {}
@@ -656,12 +723,98 @@ void Cpu68000::SWAP(uint8 bits13to15) {}
 void Cpu68000::PEA(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEfromSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEtoCCR(uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::MOVEtoSR(uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::MOVEtoSR(uint8 bits10to12, uint8 bits13to15) {
+    const uint32 value = bus->readLong(PC);
+    PC += 4;
+    SR = value;
+    std::cout << "movetoSR " << static_cast<int>(value) << std::endl;
+}
 void Cpu68000::NEGX(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::CLR(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::NEG(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::NOT(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::DBcc(uint8 bits4to7, uint8 bits13to15) {}
+void Cpu68000::DBcc(uint8 bits4to7, uint8 bits13to15) {
+    std::cout << "dbra_";
+    const int condition = static_cast<int>(bits4to7);
+    const int reg = static_cast<int>(bits13to15);
+    const uint16 value = bus->readWord(PC);
+    const short displacement = static_cast<short>(value);
+    PC += 2; // might need to undo
+    switch (condition) {
+        case 0b0000: {
+            std::cout << "true";
+            break;
+        }
+        case 0b0001: {
+            std::cout << "false D[" << reg << "], " << value << " " << std::dec << displacement << std::hex;
+            if (D[reg].w == 0) {
+                // continue to next instruction
+            }
+            else {
+                D[reg].w--;
+                PC += displacement - 2; // undo 
+            }
+            break;
+        }
+        case 0b0010: {
+            std::cout << "higher";
+            break;
+        }
+        case 0b0011: {
+            std::cout << "lowerOrSame";
+            break;
+        }
+        case 0b0100: {
+            std::cout << "CarryClear";
+            break;
+        }
+        case 0b0101: {
+            std::cout << "CarrySet";
+            break;
+        }
+        case 0b0110: {
+            std::cout << "NotEqual";
+            break;
+        }
+        case 0b0111: {
+            std::cout << "Equal";
+            break;
+        }
+        case 0b1000: {
+            std::cout << "OverflowClear";
+            break;
+        }
+        case 0b1001: {
+            std::cout << "OverflowSet";
+            break;
+        }
+        case 0b1010: {
+            std::cout << "Plus";
+            break;
+        }
+        case 0b1011: {
+            std::cout << "Minus";
+            break;
+        }
+        case 0b1100: {
+            std::cout << "GreaterOrEqual";
+            break;
+        }
+        case 0b1101: {
+            std::cout << "LessThan";
+            break;
+        }
+        case 0b1110: {
+            std::cout << "GreaterThan";
+            break;
+        }
+        case 0b1111: {
+            std::cout << "LessOrEqual";
+            break;
+        }
+    }
+    std::cout << std::endl;
+}
 void Cpu68000::Scc(uint8 bits4to7, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::SUBQ(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ADDQ(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
@@ -674,7 +827,11 @@ void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {
         std::cout << "beq displacement: " << int(bits8to15) << " data: " << value << std::endl;
     }
 }
-void Cpu68000::MOVEQ(uint8 bits4to6, uint8 bits8to15) {}
+void Cpu68000::MOVEQ(uint8 bits4to6, uint8 bits8to15) {
+    const int reg = static_cast<int>(bits4to6);
+    D[reg].l = bits8to15;
+    std::cout << "moveq " <<static_cast<int>(bits8to15) << ", D[" << reg << "]" << std::endl;
+}
 void Cpu68000::DIVS(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::DIVU(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::SBCD(uint8 bits4to6, uint8 bit12, uint8 bits13to15) {}
@@ -693,7 +850,11 @@ void Cpu68000::EXG(uint8 bits4to6, uint8 bits8to9, uint8 bit12, uint8 bits13to15
 void Cpu68000::AND(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ADDA(uint8 bits4to6, uint8 bit7, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ADDX(uint8 bits4to6, uint8 bits8to9, uint8 bit12, uint8 bits13to15) {}
-void Cpu68000::ADD(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::ADD(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
+    std::cout << "add";
+
+    std::cout << std::endl;
+}
 void Cpu68000::ASd(uint8 bit7, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::LSd(uint8 bit7, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ROXd(uint8 bit7, uint8 bits10to12, uint8 bits13to15) {}

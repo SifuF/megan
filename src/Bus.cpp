@@ -5,7 +5,7 @@
 #include <iterator>
 #include <vector>
 
-Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp) {
+Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(false) {
     std::ifstream input("../roms/main.bin", std::ios::binary);
     std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
     map = std::move(buffer);
@@ -211,7 +211,7 @@ uint8 Bus::readByte(uint32 addr) {
     }
     else if (addr < 0xA10020) {
         std::cout << "IO read ";
-        return 0; // No TMSS
+        return hasTmss; // No TMSS
     }
     else if (addr < 0xFF0000) {
         std::cout << "Not implemented read yet! ";
@@ -257,7 +257,9 @@ void Bus::writeByte(uint32 addr, uint8 data) {
         std::cout << "IO write";
     }
     else if (addr < 0xFF0000) {
-        std::cout << "Not implemented write yet!";
+        if (addr >= 0xA14000 && addr <= 0xA14003) {
+            tmss[addr - 0xA14000] = data;
+        }
     }
     else if(addr < 0x1000000) {
         std::cout << "RAM write";
@@ -270,15 +272,15 @@ void Bus::writeByte(uint32 addr, uint8 data) {
 }
 
 void Bus::writeWord(uint32 addr, uint16 data) {
-    const uint8 msb = static_cast<uint8>(data);
-    const uint8 lsb = static_cast<uint8>(data << 8);
+    const uint8 lsb = static_cast<uint8>(data);
+    const uint8 msb = static_cast<uint8>(data >> 8);
     writeByte(addr, msb);
     writeByte(addr + 1, lsb);
 }
 
 void Bus::writeLong(uint32 addr, uint32 data) {
-    const uint16 msb = static_cast<uint16>(data);
-    const uint16 lsb = static_cast<uint16>(data << 16);
+    const uint16 lsb = static_cast<uint16>(data);
+    const uint16 msb = static_cast<uint16>(data >> 16);
     writeWord(addr, msb);
     writeWord(addr + 2, lsb);
 }

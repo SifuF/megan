@@ -35,6 +35,9 @@ private:
     VDP vdp;
     Graphics graphics;
 
+    std::array<uint8, 4> tmss;
+    bool hasTmss;
+
     std::vector<uint8> map;
 };
 
