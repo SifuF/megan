@@ -20,7 +20,14 @@ struct Reg {
     };
 };
 
-enum Status {
+enum OperationSize {
+    Byte = 0,
+    Word,
+    Long,
+    UnknownSize
+};
+
+enum StatusRegister {
     C = 0,
     V,
     Z,
@@ -37,6 +44,22 @@ enum Status {
     S,
     unused14,
     T
+};
+
+enum AddressingMode {
+    DataRegister = 0,     // D[n]
+    AddressRegister,      // A[n]
+    Address,              // (A[n])
+    AddressPostIncrement, // (A[n]++)
+    AddressPreDecrement,  // (--A[n])
+    AddressDisplacement,
+    AddressIndex,
+    ProgramCounterDisplacement,
+    ProgramCounterIndex,
+    AbsoluteShort,
+    AbsoluteLong,
+    Immediate,
+    UnknownAddress
 };
 
 class Cpu68000 {

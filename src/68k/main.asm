@@ -171,7 +171,7 @@ NextVDPSetting
 
 
 ;	move.w	#($FFFF/2)-1,d0      ;Iterating in words
-	move.w	#(10)-1,d0           ;Iterating in words
+	move.w	#3-1,d0           ;Iterating in words
 	move.l	#$40000000,d1
 	move.l	d1,VDPCtrl
 VRAMClrLoop
@@ -215,7 +215,7 @@ TileLoop
 
 
 ;	move.w	#($1000/2)-1,d0
-	move.w	#(10)-1,d0
+	move.w	#3-1,d0
 	move.l	#$60000003,d1
 	move.l	d1,VDPCtrl
 ScrollBLoop

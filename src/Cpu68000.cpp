@@ -426,10 +426,10 @@ void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     PC += 2;
     D[0].b &= static_cast<uint8>(value);
     if (D[0].b == 0) {
-        SR.set(Status::Z, true);
+        SR.set(StatusRegister::Z, true);
     }
     else {
-        SR.set(Status::Z, false);
+        SR.set(StatusRegister::Z, false);
     }
 
     std::cout << "andi.b " << std::hex << value << " " << int(D[0].b) << std::endl;
@@ -437,64 +437,168 @@ void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
 void Cpu68000::SUBI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     std::cout << "addi";
-    const auto type = static_cast<int>(bits8to9);
-    if (type == 0) std::cout << ".b ";
-    else if (type == 1) std::cout << ".w ";
-    else if (type == 2) std::cout << ".l ";
 
-    auto writeReg = [this, type, bits13to15](bool data, int reg, uint32 value) {
-        switch (type) {
-            case 0: {
-                if (data) {
+    auto getAddressingMode = [](uint8 memBits, uint8 regBits) -> AddressingMode {
+        AddressingMode addressingMode = AddressingMode::UnknownAddress;
+        switch (memBits) {
+            case 0b000: {
+                addressingMode = AddressingMode::DataRegister;
+                std::cout << "D[" << static_cast<int>(regBits) << "]";
+                break;
+            }
+            case 0b001: { // Not valid 68k?
+                addressingMode = AddressingMode::AddressRegister;
+                std::cout << "A[" << static_cast<int>(regBits) << "]";
+                break;
+            }
+            case 0b010: {
+                addressingMode = AddressingMode::Address;
+                std::cout << "(A[" << static_cast<int>(regBits) << "])";
+                break;
+            }
+            case 0b011: {
+                addressingMode = AddressingMode::AddressPostIncrement;
+                std::cout << "(A[" << static_cast<int>(regBits) << "])+";
+                break;
+            }
+            case 0b100: {
+                addressingMode = AddressingMode::AddressPreDecrement;
+                std::cout << "-(A[" << static_cast<int>(regBits) << "])";
+                break;
+            }
+            default: {
+                std::cout << "ADDI needs upgrade!";
+                break;
+            }
+        }
+        return addressingMode;
+    };
+
+    auto write = [this](AddressingMode addressingMode, OperationSize operationSize, int reg, uint32 value) {
+        switch (addressingMode) {
+            case AddressingMode::DataRegister: {
+                if (operationSize == OperationSize::Byte) {
                     D[reg].b += value;
                 }
-                else {
-                    A[reg].b += value;
-                }
-            }
-            case 1: {
-                if (data) {
+                else if (operationSize == OperationSize::Word) {
                     D[reg].w += value;
                 }
-                else {
-                    A[reg].w += value;
-                }
-            }
-            case 2: {
-                if (data) {
+                else if (operationSize == OperationSize::Long) {
                     D[reg].l += value;
                 }
-                else {
+                break;
+            }
+            case AddressingMode::AddressRegister: { // Not valid 68k?
+                if (operationSize == OperationSize::Byte) {
+                    A[reg].b += value;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    A[reg].w += value;
+                }
+                else if (operationSize == OperationSize::Long) {
                     A[reg].l += value;
                 }
+                break;
+            }
+            case AddressingMode::Address: {
+                if (operationSize == OperationSize::Byte) {
+                    const auto read = bus->readByte(A[reg].b);
+                    bus->writeByte(A[reg].b, read + value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    const auto read = bus->readWord(A[reg].w);
+                    bus->writeByte(A[reg].w, read + value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    const auto read = bus->readLong(A[reg].l);
+                    bus->writeByte(A[reg].l, read + value);
+                }
+                break;
+            }
+            case AddressingMode::AddressPostIncrement: {
+                if (operationSize == OperationSize::Byte) {
+                    const auto read = bus->readByte(A[reg].b);
+                    bus->writeByte(A[reg].b, read + value);
+                    A[reg].b++;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    const auto read = bus->readWord(A[reg].w);
+                    bus->writeByte(A[reg].w, read + value);
+                    A[reg].w += 2;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    const auto read = bus->readLong(A[reg].l);
+                    bus->writeByte(A[reg].l, read + value);
+                    A[reg].l += 4;
+                }
+                break;
+            }
+            case AddressingMode::AddressPreDecrement: {
+                if (operationSize == OperationSize::Byte) {
+                    A[reg].b--;
+                    const auto read = bus->readByte(A[reg].b);
+                    bus->writeByte(A[reg].b, read + value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    A[reg].w -=2;
+                    const auto read = bus->readWord(A[reg].w);
+                    bus->writeByte(A[reg].w, read + value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    A[reg].l -= 4;
+                    const auto read = bus->readLong(A[reg].l);
+                    bus->writeByte(A[reg].l, read + value);
+                }
+                break;
+            }
+            case AddressingMode::AddressDisplacement: {
+                break;
+            }
+            case AddressingMode::AddressIndex: {
+                break;
+            }
+            case AddressingMode::ProgramCounterDisplacement: {
+                break;
+            }
+            case AddressingMode::ProgramCounterIndex: {
+                break;
+            }
+            case AddressingMode::AbsoluteShort: {
+                break;
+            }
+            case AddressingMode::AbsoluteLong: {
+                break;
+            }
+            default: {
+                throw std::exception("Unknown addressing mode!");
+                break;
             }
         }
     };
 
+    OperationSize operationSize = OperationSize::UnknownSize;
+    if (bits8to9 == 0) {
+        operationSize = OperationSize::Byte;
+        std::cout << ".b ";
+    }
+    else if (bits8to9 == 1) {
+        operationSize = OperationSize::Word;
+        std::cout << ".w ";
+    }
+    else if (bits8to9 == 2) {
+        operationSize = OperationSize::Long;
+        std::cout << ".l ";
+    }
+
     const auto reg = static_cast<int>(bits13to15);
-    const uint32 value = bus->readLong(PC);
+    const auto value = bus->readLong(PC);
     PC += 4;
     std::cout << value << ", ";
-    switch (bits10to12) {
-        case 0b000: {
-            std::cout << "D[" << reg << "]";
-            writeReg(true, reg, value);
-            break;
-        }
-        case 0b001: {
-            std::cout << "A[" << reg << "]";
-            writeReg(false, reg, value);
-            break;
-        }
-        case 0b010: {
-            std::cout << "(" << A[reg].l << ")";
-            break;
-        }
-        default: {
-            std::cout << "ADDI needs upgrade!";
-            break; 
-        }
-    }
+
+    AddressingMode addressingMode = getAddressingMode(bits10to12, bits13to15);
+
+    write(addressingMode, operationSize, reg, value);
+    
     std::cout << std::endl;
 }
 void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {}
@@ -528,155 +632,338 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
     // bits10to12 == 7 => from see below
     // bits13to15 == 1 => immediate
 
-    const auto type = static_cast<int>(bits2to3);
-    if(type == 1) std::cout << ".b ";
-    else if (type == 2) std::cout << ".l ";
-    else if (type == 3) std::cout << ".w ";
-
-    auto writeReg = [this, type](bool data, int reg, uint32 value, int type) {
-        switch (type) {
-            case 1: {
-                if (data) {
-                    D[reg].b = static_cast<uint8>(value);
-                }
-                else {
-                    A[reg].b = static_cast<uint8>(value);
-                }
-                break;
-            }
-            case 2: {
-                if (data) {
-                    D[reg].l = value;
-                }
-                else {
-                    A[reg].l = value;
-                }
-                break;
-            }
-            case 3: {
-                if (data) {
-                    D[reg].w = static_cast<uint16>(value);
-                }
-                else {
-                    A[reg].w = static_cast<uint16>(value);
-                }
-                break;
-            }
-            default: {
-                throw(std::exception("Unknown register size!"));
-                break;
-            }
-        }
-    };
-
-    //     dst           src
-    // R R R M M M    M M M R R R
-    auto regMem = [this, type, &writeReg](uint8 regBits, uint8 memBits, bool writing, uint32 value) -> uint32 {
-        const std::string label = writing ? "dst:" : "src:";
-        std::cout << label;
-        const auto reg = static_cast<int>(regBits);
+    auto getAddressingMode = [this](uint8 memBits, uint8 regBits) -> AddressingMode {
+        AddressingMode addressingMode = AddressingMode::UnknownAddress;
         switch (memBits) {
             case 0b000: {
-                std::cout << "D[" << reg << "] ";
-                if (writing) {
-                    writeReg(true, reg, value, type);
-                }
-                else {
-                
-                }
+                addressingMode = AddressingMode::DataRegister;
+                std::cout << "D[" << static_cast<int>(regBits) << "] ";
                 break;
             }
             case 0b001: {
-                std::cout << "A[" << reg << "] ";
+                addressingMode = AddressingMode::AddressRegister;
+                std::cout << "A[" << static_cast<int>(regBits) << "] ";
                 break;
             }
             case 0b010: {
-                std::cout << "(A[" << reg << "]) ";
+                addressingMode = AddressingMode::Address;
+                std::cout << "(A[" << static_cast<int>(regBits) << "]) ";
                 break;
             }
             case 0b011: {
-                std::cout << "(A[" << reg << "])+ ";
+                addressingMode = AddressingMode::AddressPostIncrement;
+                std::cout << "(A[" << static_cast<int>(regBits) << "])+ ";
                 break;
-
             }
             case 0b100: {
-                std::cout << "-(A[" << reg << "]) ";
+                addressingMode = AddressingMode::AddressPreDecrement;
+                std::cout << "-(A[" << static_cast<int>(regBits) << "]) ";
                 break;
             }
             case 0b101: {
-                std::cout << "displacement(A[" << reg << "]) ";
+                addressingMode = AddressingMode::AddressDisplacement;
+                std::cout << "displacement(A[" << static_cast<int>(regBits) << "]) ";
                 break;
             }
             case 0b110: {
-                std::cout << "index(A[" << reg << "]) ";
+                addressingMode = AddressingMode::AddressIndex;
+                std::cout << "index(A[" << static_cast<int>(regBits) << "]) ";
                 break;
             }
             case 0b111: {
-                switch (reg) {
+                switch (regBits) {
                     case 0b010: {
+                        addressingMode = AddressingMode::ProgramCounterDisplacement;
                         std::cout << "PC.displacement ";
                         break;
                     }
                     case 0b011: {
+                        addressingMode = AddressingMode::ProgramCounterIndex;
                         std::cout << "PC.index ";
                         break;
                     }
                     case 0b000: {
+                        addressingMode = AddressingMode::AbsoluteShort;
                         std::cout << "Abs.w ";
                         break;
                     }
                     case 0b001: {
-                        if (writing) {
-                            std::cout << "Abs.l:";
-                            const uint32 addr = bus->readLong(PC);
-                            PC += 4;
-                            std::cout << "(" << static_cast<int>(addr) << ") ";
-                            bus->writeLong(addr, value);
-
-                        }
-                        else {
-                            std::cout << "Abs.l:";
-                            const uint32 readValue = bus->readLong(PC);
-                            PC += 4;
-                            std::cout << "(" << static_cast<int>(readValue) << ") ";
-                            return readValue;
-                        }
+                        addressingMode = AddressingMode::AbsoluteLong;
+                        std::cout << "Abs.l ";
                         break;
                     }
                     case 0b100: {
-                        if (writing) {
-                            // error?
-                        }
-                        else {
-                            std::cout << "immediate:";
-                            uint32 readValue = 0;
-                            if (type == 1) { // b
-                            
-                            }
-                            else if (type == 2) { // l
-                                readValue = bus->readLong(PC);
-                                PC += 4;
-                            }
-                            else if (type == 3) { // w
-                                readValue = bus->readWord(PC);
-                                PC += 2;
-                            }
-                            
-                            std::cout << static_cast<int>(readValue) << " ";
-                            return readValue;
-                        }
+                        addressingMode = AddressingMode::Immediate;
+                        std::cout << "Immediate ";
                         break;
                     }
                 }
             }
         }
+        return addressingMode;
     };
 
-    // src
-    uint32 srcValue = regMem(bits13to15, bits10to12, false, 0);
-   
-    // dst 
-    regMem(bits4to6, bits7to9, true, srcValue);
+    auto read = [this](AddressingMode addressingMode, OperationSize operationSize, int reg) -> uint32 {
+        uint32 value = 0;
+        switch (addressingMode) {
+            case AddressingMode::DataRegister: {
+                if (operationSize == OperationSize::Byte) {
+                    value = D[reg].b;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    value = D[reg].w;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    value = D[reg].l;
+                }
+                break;
+            }
+            case AddressingMode::AddressRegister: {
+                if (operationSize == OperationSize::Byte) {
+                    value = A[reg].b;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    value = A[reg].w;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    value = A[reg].l;
+                }
+                break;
+            }
+            case AddressingMode::Address: {
+                if (operationSize == OperationSize::Byte) {
+                    value = bus->readByte(A[reg].b); // expansion
+                }
+                else if (operationSize == OperationSize::Word) {
+                    value = bus->readWord(A[reg].w); // expansion
+                }
+                else if (operationSize == OperationSize::Long) {
+                    value = bus->readLong(A[reg].l);
+                }
+                break;
+            }
+            case AddressingMode::AddressPostIncrement: {
+                if (operationSize == OperationSize::Byte) {
+                    value = bus->readByte(A[reg].b); // expansion
+                    A[reg].b++;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    value = bus->readWord(A[reg].w); // expansion
+                    A[reg].w += 2;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    value = bus->readLong(A[reg].l);
+                    A[reg].l += 4;
+                }
+                break;
+            }
+            case AddressingMode::AddressPreDecrement: {
+                if (operationSize == OperationSize::Byte) {
+                    A[reg].b--;
+                    value = bus->readByte(A[reg].b); // expansion
+                }
+                else if (operationSize == OperationSize::Word) {
+                    A[reg].w -= 2;
+                    value = bus->readWord(A[reg].w); // expansion
+                }
+                else if (operationSize == OperationSize::Long) {
+                    A[reg].l -= 4;
+                    value = bus->readLong(A[reg].l);
+                }
+                break;
+            }
+            case AddressingMode::AddressDisplacement: {
+                break;
+            }
+            case AddressingMode::AddressIndex: {
+                break;
+            }
+            case AddressingMode::ProgramCounterDisplacement: {
+                break;
+            }
+            case AddressingMode::ProgramCounterIndex: {
+                break;
+            }
+            case AddressingMode::AbsoluteShort: {
+                value = bus->readWord(PC); // expansion
+                PC += 2;
+                break;
+            }
+            case AddressingMode::AbsoluteLong: {
+                value = bus->readLong(PC);
+                PC += 4;
+                break;
+            }
+            case AddressingMode::Immediate: {
+                if (operationSize == OperationSize::Byte) {
+                    // invalid
+                }
+                else if (operationSize == OperationSize::Word) {
+                    value = bus->readWord(PC);
+                    PC += 2;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    value = bus->readLong(PC);
+                    PC += 4;
+                }
+                break;
+            }
+            default: {
+                throw std::exception("Unknown addressing mode!");
+                break;
+            }
+        }
+        return value;
+    };
+
+    auto write = [this](AddressingMode addressingMode, OperationSize operationSize, uint8 reg, uint32 value) {
+        switch (addressingMode) {
+            case AddressingMode::DataRegister: {
+                if (operationSize == OperationSize::Byte) {
+                    D[reg].b = value;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    D[reg].w = value;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    D[reg].l = value;
+                }
+                break;
+            }
+            case AddressingMode::AddressRegister: {
+                if (operationSize == OperationSize::Byte) {
+                    A[reg].b = value;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    A[reg].w = value;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    A[reg].l = value;
+                }
+                break;
+            }
+            case AddressingMode::Address: {
+                if (operationSize == OperationSize::Byte) {
+                    bus->writeByte(A[reg].b, value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    bus->writeWord(A[reg].w, value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    bus->writeLong(A[reg].l, value);
+                }
+                break;
+            }
+            case AddressingMode::AddressPostIncrement: {
+                if (operationSize == OperationSize::Byte) {
+                    bus->writeByte(A[reg].b, value);
+                    A[reg].b++;
+                }
+                else if (operationSize == OperationSize::Word) {
+                    bus->writeWord(A[reg].w, value);
+                    A[reg].w += 2;
+                }
+                else if (operationSize == OperationSize::Long) {
+                    bus->writeLong(A[reg].l, value);
+                    A[reg].l += 4;
+                }
+                break;
+            }
+            case AddressingMode::AddressPreDecrement: {
+                if (operationSize == OperationSize::Byte) {
+                    A[reg].b--;
+                    bus->writeByte(A[reg].b, value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    A[reg].w -= 2;
+                    bus->writeWord(A[reg].w, value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    A[reg].l -= 4;
+                    bus->writeLong(A[reg].l, value);
+                }
+                break;
+            }
+            case AddressingMode::AddressDisplacement: {
+                break;
+            }
+            case AddressingMode::AddressIndex: {
+                break;
+            }
+            case AddressingMode::ProgramCounterDisplacement: {
+                break;
+            }
+            case AddressingMode::ProgramCounterIndex: {
+                break;
+            }
+            case AddressingMode::AbsoluteShort: {
+                const auto address = bus->readWord(PC); // expansion
+                PC += 2;
+                if (operationSize == OperationSize::Byte) {
+                    bus->writeByte(address, value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    bus->writeWord(address, value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    bus->writeLong(address, value);
+                }
+                break;
+            }
+            case AddressingMode::AbsoluteLong: {
+                const auto address = bus->readLong(PC);
+                PC += 4;
+                if (operationSize == OperationSize::Byte) {
+                    bus->writeByte(address, value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    bus->writeWord(address, value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    bus->writeLong(address, value);
+                }
+                break;
+            }
+            case AddressingMode::Immediate: {
+                const auto address = bus->readLong(PC);
+                PC += 4;
+                if (operationSize == OperationSize::Byte) {
+                    bus->writeByte(address, value);
+                }
+                else if (operationSize == OperationSize::Word) {
+                    bus->writeWord(address, value);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    bus->writeLong(address, value);
+                }
+                break;
+            }
+            default: {
+                throw std::exception("Unknown addressing mode!");
+                break;
+            }
+        }
+    };
+
+    OperationSize operationSize = OperationSize::UnknownSize;
+    if (bits2to3 == 1) {
+        operationSize = OperationSize::Byte;
+        std::cout << ".b ";
+    }
+    else if (bits2to3 == 2) {
+        operationSize = OperationSize::Long;
+        std::cout << ".l ";
+    }
+    else if (bits2to3 == 3) {
+        operationSize = OperationSize::Word;
+        std::cout << ".w ";
+    }
+
+    AddressingMode dstAddressingMode = getAddressingMode(bits7to9, bits4to6);
+    AddressingMode srcAddressingMode = getAddressingMode(bits10to12, bits13to15);
+
+    uint32 srcValue = read(srcAddressingMode, operationSize, bits13to15);
+    write(dstAddressingMode, operationSize, bits4to6, srcValue);
 
     std::cout << std::endl;
 }
@@ -821,11 +1108,88 @@ void Cpu68000::ADDQ(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits
 void Cpu68000::BRA(uint8 bits8to15) {}
 void Cpu68000::BSR(uint8 bits8to15) {}
 void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {
-    if (bits4to7 == 7) { // EQ
-        const uint16 value = bus->readWord(PC);
-        PC += 2;
-        std::cout << "beq displacement: " << int(bits8to15) << " data: " << value << std::endl;
+    std::cout << "b_";
+    const int condition = static_cast<int>(bits4to7);
+    const char displacementOpcode = static_cast<char>(bits8to15);
+    const uint16 displacementFollowing = bus->readWord(PC);
+    PC += 2;
+
+    const uint32 displacement = (displacementOpcode << 16) | displacementFollowing;
+
+    switch (condition) {
+    case 0b0000: {
+        std::cout << "true";
+        break;
     }
+    case 0b0001: {
+        std::cout << "false";
+        break;
+    }
+    case 0b0010: {
+        std::cout << "higher";
+        break;
+    }
+    case 0b0011: {
+        std::cout << "lowerOrSame";
+        break;
+    }
+    case 0b0100: {
+        std::cout << "CarryClear";
+        break;
+    }
+    case 0b0101: {
+        std::cout << "CarrySet";
+        break;
+    }
+    case 0b0110: {
+        std::cout << "NotEqual";
+        break;
+    }
+    case 0b0111: {
+        std::cout << "Equal ";
+        std::cout << "displacement:" << static_cast<int>(displacement);
+        if (SR[StatusRegister::Z] == 1) {
+            PC += displacement - 2;
+        }
+        else {
+            // continue
+        }
+        break;
+    }
+    case 0b1000: {
+        std::cout << "OverflowClear";
+        break;
+    }
+    case 0b1001: {
+        std::cout << "OverflowSet";
+        break;
+    }
+    case 0b1010: {
+        std::cout << "Plus";
+        break;
+    }
+    case 0b1011: {
+        std::cout << "Minus";
+        break;
+    }
+    case 0b1100: {
+        std::cout << "GreaterOrEqual";
+        break;
+    }
+    case 0b1101: {
+        std::cout << "LessThan";
+        break;
+    }
+    case 0b1110: {
+        std::cout << "GreaterThan";
+        break;
+    }
+    case 0b1111: {
+        std::cout << "LessOrEqual";
+        break;
+    }
+    }
+    std::cout << std::endl;
 }
 void Cpu68000::MOVEQ(uint8 bits4to6, uint8 bits8to15) {
     const int reg = static_cast<int>(bits4to6);

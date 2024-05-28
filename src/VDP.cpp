@@ -1,7 +1,7 @@
 #include "VDP.hpp"
 #include <iostream>
 
-VDP::VDP() : vram(0xffff), cram(64), vsram(40), reg(24) {
+VDP::VDP() : vram(0xffff), cram(64), vsram(40), reg(24), status(6) {
     screen.resize(width * height * 4);
 }
 

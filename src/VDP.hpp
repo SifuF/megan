@@ -17,6 +17,8 @@ public:
     unsigned getHeight() { return height; }
     std::vector<uint8> & getScreen() { return screen; }
 
+    uint16 getStatus() { return status; }
+
 private:
 
     void drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet);
@@ -34,9 +36,11 @@ private:
     std::vector<uint16> vsram; // 40 10bit words
 
     std::vector<uint16> reg; // 24 registers
+    uint16 status;
 
     std::vector<uint8> screen;
 
     static constexpr unsigned width = 320;
     static constexpr unsigned height = 224;
+
 };

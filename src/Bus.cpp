@@ -5,7 +5,7 @@
 #include <iterator>
 #include <vector>
 
-Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(false) {
+Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(true) {
     std::ifstream input("../roms/main.bin", std::ios::binary);
     std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
     map = std::move(buffer);
@@ -214,7 +214,12 @@ uint8 Bus::readByte(uint32 addr) {
         return hasTmss; // No TMSS
     }
     else if (addr < 0xFF0000) {
-        std::cout << "Not implemented read yet! ";
+        if (addr == 0xC00004) {
+            return static_cast<uint8>(vdp.getStatus() >> 8);
+        }
+        if (addr == 0xC00004 + 1) {
+            return static_cast<uint8>(vdp.getStatus());
+        }
         return 0;
     }
     else if (addr < 0x1000000) {
