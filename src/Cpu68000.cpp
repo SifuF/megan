@@ -732,10 +732,10 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             }
             case AddressingMode::Address: {
                 if (operationSize == OperationSize::Byte) {
-                    value = bus->readByte(A[reg].b); // expansion
+                    value = bus->readByte(A[reg].l); // addresses are longs
                 }
                 else if (operationSize == OperationSize::Word) {
-                    value = bus->readWord(A[reg].w); // expansion
+                    value = bus->readWord(A[reg].l); // expansion
                 }
                 else if (operationSize == OperationSize::Long) {
                     value = bus->readLong(A[reg].l);
@@ -744,11 +744,11 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             }
             case AddressingMode::AddressPostIncrement: {
                 if (operationSize == OperationSize::Byte) {
-                    value = bus->readByte(A[reg].b); // expansion
+                    value = bus->readByte(A[reg].l); // addresses are longs
                     A[reg].b++;
                 }
                 else if (operationSize == OperationSize::Word) {
-                    value = bus->readWord(A[reg].w); // expansion
+                    value = bus->readWord(A[reg].l); // expansion
                     A[reg].w += 2;
                 }
                 else if (operationSize == OperationSize::Long) {
@@ -760,11 +760,11 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             case AddressingMode::AddressPreDecrement: {
                 if (operationSize == OperationSize::Byte) {
                     A[reg].b--;
-                    value = bus->readByte(A[reg].b); // expansion
+                    value = bus->readByte(A[reg].l); // addresses are longs
                 }
                 else if (operationSize == OperationSize::Word) {
                     A[reg].w -= 2;
-                    value = bus->readWord(A[reg].w); // expansion
+                    value = bus->readWord(A[reg].l); // expansion
                 }
                 else if (operationSize == OperationSize::Long) {
                     A[reg].l -= 4;
@@ -785,13 +785,15 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
                 break;
             }
             case AddressingMode::AbsoluteShort: {
-                value = bus->readWord(PC); // expansion
+                const uint16 read = bus->readWord(PC); // might be readLong?
                 PC += 2;
+                value = bus->readWord(read);
                 break;
             }
             case AddressingMode::AbsoluteLong: {
-                value = bus->readLong(PC);
+                const uint32 read = bus->readLong(PC);
                 PC += 4;
+                value = bus->readLong(read);
                 break;
             }
             case AddressingMode::Immediate: {
