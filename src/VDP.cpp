@@ -17,6 +17,14 @@ void VDP::clearScreen() {
     }
 }
 
+void VDP::selectRegister(uint8 data) {
+    currentRegister = data - 0x80;
+}
+
+void VDP::setRegister(uint8 data) {
+    reg[currentRegister] = data;
+}
+
 void VDP::setup() {
     uint32 f[] = {
         0x12121210,

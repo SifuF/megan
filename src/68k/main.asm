@@ -163,15 +163,15 @@ NOTMSS
 	move.w (VDPCtrl),d0          ;Read $C00004 = Status register
 	move.l #$00008000,d1
 	moveq.l #24-1,d2             ;Loop counter for 24 registers
-NextVDPSetting	
-	move.b (a0)+,d1              ;000080aa   000081bb   000082cc
+NextVDPSetting                   ; rr=reg0    rr=reg1    rr=reg2
+	move.b (a0)+,d1              ;000080rr   000081rr   000082rr
 	move.w d1,(VDPCtrl)
-	add.l #$00000100,d1          ;000081aa   000082bb   000083cc
+	add.l #$00000100,d1          ;000081rr   000082rr   000083rr
 	dbra d2,NextVDPSetting
 
 
 ;	move.w	#($FFFF/2)-1,d0      ;Iterating in words
-	move.w	#3-1,d0           ;Iterating in words
+	move.w	#3-1,d0              ;Iterating in words
 	move.l	#$40000000,d1
 	move.l	d1,VDPCtrl
 VRAMClrLoop

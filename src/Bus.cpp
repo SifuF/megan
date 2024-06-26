@@ -266,9 +266,10 @@ void Bus::writeByte(uint32 addr, uint8 data) {
             tmss[addr - 0xA14000] = data;
         }
         else if (addr == 0xC00004) {
-            //if (data == 0x40000000) {
-                vdp.setVramIndex(0);
-            //}
+            vdp.selectRegister(data);
+        }
+        else if (addr == 0xC00005) {
+            vdp.setRegister(data);
         }
         else if (addr == 0xC00000) {
             //if (data == 0x40000000) {

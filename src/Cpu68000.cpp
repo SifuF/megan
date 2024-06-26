@@ -793,7 +793,12 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             case AddressingMode::AbsoluteLong: {
                 const uint32 read = bus->readLong(PC);
                 PC += 4;
-                value = bus->readLong(read);
+                if (operationSize == OperationSize::Word) {
+                    value = bus->readWord(read);
+                }
+                else if (operationSize == OperationSize::Long) {
+                    value = bus->readLong(read);
+                }
                 break;
             }
             case AddressingMode::Immediate: {

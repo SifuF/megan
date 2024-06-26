@@ -39,6 +39,9 @@ public:
         */
     }
 
+    void selectRegister(uint8 data);
+    void setRegister(uint8 data);
+
 private:
 
     void drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet);
@@ -58,6 +61,7 @@ private:
     size_t vramIndex;
 
     std::vector<uint16> reg; // 24 registers
+    uint8 currentRegister = 0;
     uint16 status;
 
     std::vector<uint8> screen;
