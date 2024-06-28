@@ -67,6 +67,32 @@ public:
     void execute();
 
 private:
+
+    AddressingMode getAddressingMode(uint8 modeBits, uint8 regBits) const {
+        switch (modeBits) {
+            case 0b000: { return AddressingMode::DataRegister; }
+            case 0b001: { return AddressingMode::AddressRegister; }
+            case 0b010: { return AddressingMode::Address; }
+            case 0b011: { return AddressingMode::AddressPostIncrement; }
+            case 0b100: { return AddressingMode::AddressPreDecrement; }
+            case 0b101: { return AddressingMode::AddressDisplacement; }
+            case 0b110: { return AddressingMode::AddressIndex; }
+            case 0b111: {
+                switch (regBits) {
+                case 0b010: { return AddressingMode::ProgramCounterDisplacement; }
+                case 0b011: { return AddressingMode::ProgramCounterIndex; }
+                case 0b000: { return AddressingMode::AbsoluteShort; }
+                case 0b001: { return AddressingMode::AbsoluteLong; }
+                case 0b100: { return AddressingMode::Immediate; }
+                default: { return AddressingMode::UnknownAddress; }
+                }
+            }
+            default: {
+                return AddressingMode::UnknownAddress;
+            }
+        }
+    };
+
     //void MOVE(uint8 src, uint8 dst, int size) {};
     //void ANDI();
     //void ADD();

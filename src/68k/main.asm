@@ -162,7 +162,7 @@ NOTMSS
 	lea VDPREG,a0
 	move.w (VDPCtrl),d0          ;Read $C00004 = Status register
 	move.l #$00008000,d1
-	moveq.l #24-1,d2             ;Loop counter for 24 registers
+	moveq.l #3-1,d2             ;Loop counter for 24 registers
 NextVDPSetting                   ; rr=reg0    rr=reg1    rr=reg2
 	move.b (a0)+,d1              ;000080rr   000081rr   000082rr
 	move.w d1,(VDPCtrl)

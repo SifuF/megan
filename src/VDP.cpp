@@ -17,14 +17,6 @@ void VDP::clearScreen() {
     }
 }
 
-void VDP::selectRegister(uint8 data) {
-    currentRegister = data - 0x80;
-}
-
-void VDP::setRegister(uint8 data) {
-    reg[currentRegister] = data;
-}
-
 void VDP::setup() {
     uint32 f[] = {
         0x12121210,
@@ -71,17 +63,17 @@ void VDP::setup() {
     *(cram.data() + (1 * 16) + 3) = 0b0000'1110'1110'1110;
     *(cram.data() + (1 * 16) + 4) = 0b0000'1110'1110'1110;
 
-    std::memcpy(vram.data(), x, 32); //copy tile X into 0th tile
-    std::memcpy(vram.data() + 32, f, 32); //copy tile F into 1th tile
+    //std::memcpy(vram.data(), x, 32); //copy tile X into 0th tile
+    //std::memcpy(vram.data() + 32, f, 32); //copy tile F into 1th tile
 
-    std::memset(vram.data() + scrollA, 0, 64 * 32); //fill Scroll A with tile 0
+    //std::memset(vram.data() + scrollA, 0, 64 * 32); //fill Scroll A with tile 0
     //std::memset(vram.data() + scrollB, 1, 64 * 32); //fill Scroll B with tile 1
 
     //random scroll B
-    for (int i = 0; i < 64 * 32; ++i) {
-        const auto r = rand() % 2;
-        *(vram.data() + scrollB + i) = r;
-    }
+    //for (int i = 0; i < 64 * 32; ++i) {
+    //    const auto r = rand() % 2;
+    //    *(vram.data() + scrollB + i) = r;
+   // }
 }
 
 void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet) {
@@ -181,6 +173,7 @@ void VDP::buildFrame(){
     //}
 
     for (int i = 0; i < height; i++) {
-        drawLine(i, vram.data() + scrollB, 0);
+        drawLine(i, vram.data() + scrollA, 0);
+        drawLine(i, vram.data() + scrollB, 0);   
     }
 }

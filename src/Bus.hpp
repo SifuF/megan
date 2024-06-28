@@ -48,33 +48,24 @@ public:
     }
 
     template<typename DataType>
-    DataType endianSwap(DataType data) {
-        OperationSize operationSize = getOperationSize<DataType>();
-        if (operationSize == OperationSize::Word) {
-            const DataType lsb = (data & 0xFF00) >> 8;
-            const DataType msb = data << 8;
-            return msb | lsb;
-        }
-        else if (operationSize == OperationSize::Long) {
-            const DataType byte4 = (data & 0xFF000000) >> 24;
-            const DataType byte3 = (data & 0x00FF0000) >> 8;
-            const DataType byte2 = (data & 0x0000FF00) << 8;
-            const DataType byte1 = (data & 0x000000FF) << 24;
-            return byte1 | byte2 | byte3 | byte4;
-        }
-        else {
-            return data;
-        }
-    }
-
-    template<typename DataType>
     DataType read(uint32 addr) {
-        //constexpr OperationSize operationSize = getOperationSize<DataType>();
+        const OperationSize operationSize = getOperationSize<DataType>();
 
-        if (addr < 0x400000) {
-            const auto * mapPtr = reinterpret_cast<DataType*>(map.get());
-            const auto data = mapPtr[addr / sizeof(DataType)];
-            return endianSwap<DataType>(data);
+        if (addr < 0x400000) { // ROM
+            switch (operationSize) {
+                case OperationSize::Byte: {
+                    return map[addr];
+                }
+                case OperationSize::Word: {
+                    return (map[addr] << 8) | map[addr + 1];
+                }
+                case OperationSize::Long: {
+                    return (map[addr] << 24) | (map[addr + 1] << 16) | (map[addr + 2] << 8) | map[addr + 3];
+                }
+                default: {
+                    throw std::runtime_error("Unknown operation size!");
+                }
+            }
         }
         else if (addr < 0x800000) {
             throw std::runtime_error("Sega CD and 32X space read!");
@@ -86,8 +77,8 @@ public:
             std::cout << "Z80 space read";
             return 0;
         }
-        else if (addr < 0xA10020) {
-            return static_cast<DataType>(hasTmss); // No TMSS
+        else if (addr < 0xA10020) { // TMSS
+            return static_cast<DataType>(hasTmss);
         }
         else if (addr < 0xFF0000) {
             if (addr == 0xC00004) {
@@ -130,10 +121,10 @@ public:
                 tmss = data;
             }
             else if (addr == 0xC00004) {
-                vdp.processData(data);
+                vdp.processCtrl(data);
             }
             else if (addr == 0xC00000) {
-                //vdp.processCtrl(data);
+                vdp.processData(data);
             }
         }
         else if (addr < 0x1000000) {

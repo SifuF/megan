@@ -39,12 +39,26 @@ public:
         */
     }
 
-    void processData(uint32 data) {
-        //selectRegister(data);
-        //setRegister(data);
+    void processCtrl(uint32 data) {
+        if ((data >> 16) == 0) { // potential register write
+            const auto index = static_cast<uint8>(data >> 8) - 0x80;
+            const auto value = static_cast<uint8>(data);
+            reg[index] = value;
+        }
+        else if ((data >> 29) == 0) { //VRAM write
+            currentVramAddr = data & 0x1FFFF;
+        }
     }
-    void selectRegister(uint8 data);
-    void setRegister(uint8 data);
+
+    void processData(uint32 data) {
+        if ((data >> 29) == 0) { // VRAM write
+            vram[currentVramAddr] = static_cast<uint8>(data >> 24);
+            vram[currentVramAddr + 1] = static_cast<uint8>((data >> 16) & 0xFF);
+            vram[currentVramAddr + 2] = static_cast<uint8>((data >> 8) & 0xFF);
+            vram[currentVramAddr + 3] = static_cast<uint8>(data & 0xFF);
+            currentVramAddr += 4; // autoincrement
+        }
+    }
 
 private:
 
@@ -64,8 +78,9 @@ private:
 
     size_t vramIndex;
 
+    uint32 currentVramAddr = 0x0000;
+
     std::vector<uint16> reg; // 24 registers
-    uint8 currentRegister = 0;
     uint16 status;
 
     std::vector<uint8> screen;
