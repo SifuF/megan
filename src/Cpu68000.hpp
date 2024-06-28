@@ -20,13 +20,6 @@ struct Reg {
     };
 };
 
-enum OperationSize {
-    Byte = 0,
-    Word,
-    Long,
-    UnknownSize
-};
-
 enum StatusRegister {
     C = 0,
     V,

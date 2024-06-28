@@ -1,9 +1,11 @@
 #pragma once
 
+#include "defs.hpp"
 #include "Cpu68000.hpp"
 #include "VDP.hpp"
 #include "Graphics.hpp"
 
+#include <iostream>
 #include <vector>
 
 enum class BusItem {
@@ -22,23 +24,137 @@ public:
     void printMemory(BusItem busItem, unsigned begin, unsigned end);
     void printHeader();
 
-    uint8 readByte(uint32 addr);
-    uint16 readWord(uint32 addr);
-    uint32 readLong(uint32 addr);
+    template<typename T, typename halfT>
+    std::pair<halfT, halfT> split(T data) {
+        const auto lsb = static_cast<halfT>(data);
+        const auto msb = static_cast<halfT>(data >> (8*sizeof(halfT)));
+        return { msb, lsb };
+    }
 
-    void writeByte(uint32 addr, uint8 data);
-    void writeWord(uint32 addr, uint16 data);
-    void writeLong(uint32 addr, uint32 data);
+    template<typename T>
+    constexpr OperationSize getOperationSize() {
+        if constexpr (sizeof(T) == 1) {
+            return OperationSize::Byte;
+        }
+        else if constexpr (sizeof(T) == 2) {
+            return OperationSize::Word;
+        }
+        else if constexpr (sizeof(T) == 4) {
+            return OperationSize::Long;
+        }
+        else {
+            return OperationSize::UnknownSize;
+        }
+    }
+
+    template<typename DataType>
+    DataType endianSwap(DataType data) {
+        OperationSize operationSize = getOperationSize<DataType>();
+        if (operationSize == OperationSize::Word) {
+            const DataType lsb = (data & 0xFF00) >> 8;
+            const DataType msb = data << 8;
+            return msb | lsb;
+        }
+        else if (operationSize == OperationSize::Long) {
+            const DataType byte4 = (data & 0xFF000000) >> 24;
+            const DataType byte3 = (data & 0x00FF0000) >> 8;
+            const DataType byte2 = (data & 0x0000FF00) << 8;
+            const DataType byte1 = (data & 0x000000FF) << 24;
+            return byte1 | byte2 | byte3 | byte4;
+        }
+        else {
+            return data;
+        }
+    }
+
+    template<typename DataType>
+    DataType read(uint32 addr) {
+        //constexpr OperationSize operationSize = getOperationSize<DataType>();
+
+        if (addr < 0x400000) {
+            const auto * mapPtr = reinterpret_cast<DataType*>(map.get());
+            const auto data = mapPtr[addr / sizeof(DataType)];
+            return endianSwap<DataType>(data);
+        }
+        else if (addr < 0x800000) {
+            throw std::runtime_error("Sega CD and 32X space read!");
+        }
+        else if (addr < 0xA00000) {
+            throw std::runtime_error("32X ? space read!");
+        }
+        else if (addr < 0xA10000) {
+            std::cout << "Z80 space read";
+            return 0;
+        }
+        else if (addr < 0xA10020) {
+            return static_cast<DataType>(hasTmss); // No TMSS
+        }
+        else if (addr < 0xFF0000) {
+            if (addr == 0xC00004) {
+                return static_cast<DataType>(vdp.getStatus());
+            }
+            else {
+                return 0;
+            }
+        }
+        else if (addr < 0x1000000) {
+            std::cout << "RAM read ";
+            return 0;
+        }
+        else {
+            throw std::runtime_error("Read above address space!");
+        }
+    }
+
+    template<typename DataType>
+    void write(uint32 addr, DataType data) {
+        if (addr < 0x400000) {
+            throw std::runtime_error("ROM write!");
+        }
+        else if (addr < 0x800000) {
+            throw std::runtime_error("Sega CD and 32X space write!");
+        }
+        else if (addr < 0xA00000) {
+            throw std::runtime_error("32X ? space write!");
+        }
+        else if (addr < 0xA10000) {
+            std::cout << "Z80 space write";
+            return;
+        }
+        else if (addr < 0xA10020) {
+            std::cout << "IO write";
+            return;
+        }
+        else if (addr < 0xFF0000) {
+            if (addr == 0xA14000) {
+                tmss = data;
+            }
+            else if (addr == 0xC00004) {
+                vdp.processData(data);
+            }
+            else if (addr == 0xC00000) {
+                //vdp.processCtrl(data);
+            }
+        }
+        else if (addr < 0x1000000) {
+            std::cout << "RAM write";
+        }
+        else {
+            std::cout << "Error - write above address space!";
+        }
+
+        map[addr] = data;
+    }
 
 private:
     Cpu68000 cpu68000;
     VDP vdp;
     Graphics graphics;
 
-    std::array<uint8, 4> tmss;
+    uint32 tmss;
     bool hasTmss;
 
-    std::vector<uint8> map;
+    std::unique_ptr<uint8[]> map = nullptr;
 };
 
 // ----------------------------------------------------------------------------

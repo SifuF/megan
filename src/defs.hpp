@@ -19,3 +19,10 @@ namespace Endian {
         return byte1 | byte2 | byte3 | byte4;
     }
 }
+
+enum OperationSize {
+    Byte = 0,
+    Word,
+    Long,
+    UnknownSize
+};

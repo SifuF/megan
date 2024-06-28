@@ -39,6 +39,10 @@ public:
         */
     }
 
+    void processData(uint32 data) {
+        //selectRegister(data);
+        //setRegister(data);
+    }
     void selectRegister(uint8 data);
     void setRegister(uint8 data);
 

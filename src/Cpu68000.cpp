@@ -15,13 +15,13 @@ void Cpu68000::reset() {
         D[i].l = 0x0;
     }
     SR = 0x0;
-    A[7].l = bus->readLong(0x000000);
-    PC = bus->readLong(0x000004);
+    A[7].l = bus->read<uint32>(0x000000);
+    PC = bus->read<uint32>(0x000004);
 }
 
 
 void Cpu68000::fetch() {
-        const uint16 instruction = bus->readWord(PC);
+        const uint16 instruction = bus->read<uint16>(PC);
         PC += 2;
 
         std::cout << std::hex << instruction << " ";
@@ -422,7 +422,7 @@ void Cpu68000::ORI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ANDItoCCR() {}
 void Cpu68000::ANDItoSR() {}
 void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
-    const uint16 value = bus->readWord(PC);
+    const uint16 value = bus->read<uint16>(PC);
     PC += 2;
     D[0].b &= static_cast<uint8>(value);
     if (D[0].b == 0) {
@@ -502,33 +502,33 @@ void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
             }
             case AddressingMode::Address: {
                 if (operationSize == OperationSize::Byte) {
-                    const auto read = bus->readByte(A[reg].b);
-                    bus->writeByte(A[reg].b, read + value);
+                    const auto read = bus->read<uint8>(A[reg].b);
+                    bus->write<uint8>(A[reg].b, read + value);
                 }
                 else if (operationSize == OperationSize::Word) {
-                    const auto read = bus->readWord(A[reg].w);
-                    bus->writeByte(A[reg].w, read + value);
+                    const auto read = bus->read<uint16>(A[reg].w);
+                    bus->write<uint8>(A[reg].w, read + value);
                 }
                 else if (operationSize == OperationSize::Long) {
-                    const auto read = bus->readLong(A[reg].l);
-                    bus->writeByte(A[reg].l, read + value);
+                    const auto read = bus->read<uint32>(A[reg].l);
+                    bus->write<uint8>(A[reg].l, read + value);
                 }
                 break;
             }
             case AddressingMode::AddressPostIncrement: {
                 if (operationSize == OperationSize::Byte) {
-                    const auto read = bus->readByte(A[reg].b);
-                    bus->writeByte(A[reg].b, read + value);
+                    const auto read = bus->read<uint8>(A[reg].b);
+                    bus->write<uint8>(A[reg].b, read + value);
                     A[reg].b++;
                 }
                 else if (operationSize == OperationSize::Word) {
-                    const auto read = bus->readWord(A[reg].w);
-                    bus->writeByte(A[reg].w, read + value);
+                    const auto read = bus->read<uint16>(A[reg].w);
+                    bus->write<uint8>(A[reg].w, read + value);
                     A[reg].w += 2;
                 }
                 else if (operationSize == OperationSize::Long) {
-                    const auto read = bus->readLong(A[reg].l);
-                    bus->writeByte(A[reg].l, read + value);
+                    const auto read = bus->read<uint32>(A[reg].l);
+                    bus->write<uint8>(A[reg].l, read + value);
                     A[reg].l += 4;
                 }
                 break;
@@ -536,18 +536,18 @@ void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
             case AddressingMode::AddressPreDecrement: {
                 if (operationSize == OperationSize::Byte) {
                     A[reg].b--;
-                    const auto read = bus->readByte(A[reg].b);
-                    bus->writeByte(A[reg].b, read + value);
+                    const auto read = bus->read<uint8>(A[reg].b);
+                    bus->write<uint8>(A[reg].b, read + value);
                 }
                 else if (operationSize == OperationSize::Word) {
                     A[reg].w -=2;
-                    const auto read = bus->readWord(A[reg].w);
-                    bus->writeByte(A[reg].w, read + value);
+                    const auto read = bus->read<uint16>(A[reg].w);
+                    bus->write<uint8>(A[reg].w, read + value);
                 }
                 else if (operationSize == OperationSize::Long) {
                     A[reg].l -= 4;
-                    const auto read = bus->readLong(A[reg].l);
-                    bus->writeByte(A[reg].l, read + value);
+                    const auto read = bus->read<uint32>(A[reg].l);
+                    bus->write<uint8>(A[reg].l, read + value);
                 }
                 break;
             }
@@ -591,7 +591,7 @@ void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     }
 
     const auto reg = static_cast<int>(bits13to15);
-    const auto value = bus->readLong(PC);
+    const auto value = bus->read<uint32>(PC);
     PC += 4;
     std::cout << value << ", ";
 
@@ -732,27 +732,27 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             }
             case AddressingMode::Address: {
                 if (operationSize == OperationSize::Byte) {
-                    value = bus->readByte(A[reg].l); // addresses are longs
+                    value = bus->read<uint8>(A[reg].l); // addresses are longs
                 }
                 else if (operationSize == OperationSize::Word) {
-                    value = bus->readWord(A[reg].l); // expansion
+                    value = bus->read<uint16>(A[reg].l); // expansion
                 }
                 else if (operationSize == OperationSize::Long) {
-                    value = bus->readLong(A[reg].l);
+                    value = bus->read<uint32>(A[reg].l);
                 }
                 break;
             }
             case AddressingMode::AddressPostIncrement: {
                 if (operationSize == OperationSize::Byte) {
-                    value = bus->readByte(A[reg].l); // addresses are longs
+                    value = bus->read<uint8>(A[reg].l); // addresses are longs
                     A[reg].b++;
                 }
                 else if (operationSize == OperationSize::Word) {
-                    value = bus->readWord(A[reg].l); // expansion
+                    value = bus->read<uint16>(A[reg].l); // expansion
                     A[reg].w += 2;
                 }
                 else if (operationSize == OperationSize::Long) {
-                    value = bus->readLong(A[reg].l);
+                    value = bus->read<uint32>(A[reg].l);
                     A[reg].l += 4;
                 }
                 break;
@@ -760,15 +760,15 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             case AddressingMode::AddressPreDecrement: {
                 if (operationSize == OperationSize::Byte) {
                     A[reg].b--;
-                    value = bus->readByte(A[reg].l); // addresses are longs
+                    value = bus->read<uint8>(A[reg].l); // addresses are longs
                 }
                 else if (operationSize == OperationSize::Word) {
                     A[reg].w -= 2;
-                    value = bus->readWord(A[reg].l); // expansion
+                    value = bus->read<uint16>(A[reg].l); // expansion
                 }
                 else if (operationSize == OperationSize::Long) {
                     A[reg].l -= 4;
-                    value = bus->readLong(A[reg].l);
+                    value = bus->read<uint32>(A[reg].l);
                 }
                 break;
             }
@@ -785,19 +785,19 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
                 break;
             }
             case AddressingMode::AbsoluteShort: {
-                const uint16 read = bus->readWord(PC); // might be readLong?
+                const uint16 read = bus->read<uint16>(PC); // might be read<uint32>?
                 PC += 2;
-                value = bus->readWord(read);
+                value = bus->read<uint16>(read);
                 break;
             }
             case AddressingMode::AbsoluteLong: {
-                const uint32 read = bus->readLong(PC);
+                const uint32 read = bus->read<uint32>(PC);
                 PC += 4;
                 if (operationSize == OperationSize::Word) {
-                    value = bus->readWord(read);
+                    value = bus->read<uint16>(read);
                 }
                 else if (operationSize == OperationSize::Long) {
-                    value = bus->readLong(read);
+                    value = bus->read<uint32>(read);
                 }
                 break;
             }
@@ -806,11 +806,11 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
                     // invalid
                 }
                 else if (operationSize == OperationSize::Word) {
-                    value = bus->readWord(PC);
+                    value = bus->read<uint16>(PC);
                     PC += 2;
                 }
                 else if (operationSize == OperationSize::Long) {
-                    value = bus->readLong(PC);
+                    value = bus->read<uint32>(PC);
                     PC += 4;
                 }
                 break;
@@ -851,27 +851,27 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             }
             case AddressingMode::Address: {
                 if (operationSize == OperationSize::Byte) {
-                    bus->writeByte(A[reg].b, value);
+                    bus->write<uint8>(A[reg].b, value);
                 }
                 else if (operationSize == OperationSize::Word) {
-                    bus->writeWord(A[reg].w, value);
+                    bus->write<uint16>(A[reg].w, value);
                 }
                 else if (operationSize == OperationSize::Long) {
-                    bus->writeLong(A[reg].l, value);
+                    bus->write<uint32>(A[reg].l, value);
                 }
                 break;
             }
             case AddressingMode::AddressPostIncrement: {
                 if (operationSize == OperationSize::Byte) {
-                    bus->writeByte(A[reg].b, value);
+                    bus->write<uint8>(A[reg].b, value);
                     A[reg].b++;
                 }
                 else if (operationSize == OperationSize::Word) {
-                    bus->writeWord(A[reg].w, value);
+                    bus->write<uint16>(A[reg].w, value);
                     A[reg].w += 2;
                 }
                 else if (operationSize == OperationSize::Long) {
-                    bus->writeLong(A[reg].l, value);
+                    bus->write<uint32>(A[reg].l, value);
                     A[reg].l += 4;
                 }
                 break;
@@ -879,15 +879,15 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             case AddressingMode::AddressPreDecrement: {
                 if (operationSize == OperationSize::Byte) {
                     A[reg].b--;
-                    bus->writeByte(A[reg].b, value);
+                    bus->write<uint8>(A[reg].b, value);
                 }
                 else if (operationSize == OperationSize::Word) {
                     A[reg].w -= 2;
-                    bus->writeWord(A[reg].w, value);
+                    bus->write<uint16>(A[reg].w, value);
                 }
                 else if (operationSize == OperationSize::Long) {
                     A[reg].l -= 4;
-                    bus->writeLong(A[reg].l, value);
+                    bus->write<uint32>(A[reg].l, value);
                 }
                 break;
             }
@@ -904,44 +904,44 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
                 break;
             }
             case AddressingMode::AbsoluteShort: {
-                const auto address = bus->readWord(PC); // expansion
+                const auto address = bus->read<uint16>(PC); // expansion
                 PC += 2;
                 if (operationSize == OperationSize::Byte) {
-                    bus->writeByte(address, value);
+                    bus->write<uint8>(address, value);
                 }
                 else if (operationSize == OperationSize::Word) {
-                    bus->writeWord(address, value);
+                    bus->write<uint16>(address, value);
                 }
                 else if (operationSize == OperationSize::Long) {
-                    bus->writeLong(address, value);
+                    bus->write<uint32>(address, value);
                 }
                 break;
             }
             case AddressingMode::AbsoluteLong: {
-                const auto address = bus->readLong(PC);
+                const auto address = bus->read<uint32>(PC);
                 PC += 4;
                 if (operationSize == OperationSize::Byte) {
-                    bus->writeByte(address, value);
+                    bus->write<uint8>(address, value);
                 }
                 else if (operationSize == OperationSize::Word) {
-                    bus->writeWord(address, value);
+                    bus->write<uint16>(address, value);
                 }
                 else if (operationSize == OperationSize::Long) {
-                    bus->writeLong(address, value);
+                    bus->write<uint32>(address, value);
                 }
                 break;
             }
             case AddressingMode::Immediate: {
-                const auto address = bus->readLong(PC);
+                const auto address = bus->read<uint32>(PC);
                 PC += 4;
                 if (operationSize == OperationSize::Byte) {
-                    bus->writeByte(address, value);
+                    bus->write<uint8>(address, value);
                 }
                 else if (operationSize == OperationSize::Word) {
-                    bus->writeWord(address, value);
+                    bus->write<uint16>(address, value);
                 }
                 else if (operationSize == OperationSize::Long) {
-                    bus->writeLong(address, value);
+                    bus->write<uint32>(address, value);
                 }
                 break;
             }
@@ -990,7 +990,7 @@ void Cpu68000::TRAPV() {}
 void Cpu68000::RTR() {}
 void Cpu68000::JSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::JMP(uint8 bits10to12, uint8 bits13to15) {
-    const uint32 value = bus->readLong(PC);
+    const uint32 value = bus->read<uint32>(PC);
     PC = value;
     std::cout << "jmp " << static_cast<int>(value) << std::endl;
 }
@@ -1003,7 +1003,7 @@ void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {
     std::cout << "lea ";
     if (bits10to12 == 7) { // should do always?
         if (bits13to15 == 1) { // Abs.l
-            const uint32 value = bus->readLong(PC);
+            const uint32 value = bus->read<uint32>(PC);
             PC += 4;
             A[reg].l = value;
             std::cout << value << ", A[" << reg << "] " << std::endl;
@@ -1018,7 +1018,7 @@ void Cpu68000::PEA(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEfromSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEtoCCR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEtoSR(uint8 bits10to12, uint8 bits13to15) {
-    const uint32 value = bus->readLong(PC);
+    const uint32 value = bus->read<uint32>(PC);
     PC += 4;
     SR = value;
     std::cout << "movetoSR " << static_cast<int>(value) << std::endl;
@@ -1031,7 +1031,7 @@ void Cpu68000::DBcc(uint8 bits4to7, uint8 bits13to15) {
     std::cout << "dbra_";
     const int condition = static_cast<int>(bits4to7);
     const int reg = static_cast<int>(bits13to15);
-    const uint16 value = bus->readWord(PC);
+    const uint16 value = bus->read<uint16>(PC);
     const short displacement = static_cast<short>(value);
     PC += 2; // might need to undo
     switch (condition) {
@@ -1118,7 +1118,7 @@ void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {
     std::cout << "b_";
     const int condition = static_cast<int>(bits4to7);
     const char displacementOpcode = static_cast<char>(bits8to15);
-    const uint16 displacementFollowing = bus->readWord(PC);
+    const uint16 displacementFollowing = bus->read<uint16>(PC);
     PC += 2;
 
     const uint32 displacement = (displacementOpcode << 16) | displacementFollowing;
