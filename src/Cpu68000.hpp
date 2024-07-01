@@ -6,6 +6,8 @@
 #include <cassert>
 #include <cstddef>
 
+//#define LOG
+
 #define BYTE 1
 #define WORD 2
 #define LONG 3

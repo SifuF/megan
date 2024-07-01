@@ -27,9 +27,9 @@ void Cpu68000::fetch() {
 
     const uint16 instruction = bus->read<uint16>(PC);
     PC += 2;
-
+#if defined(LOG)
     std::cout << std::hex << instruction << " ";
-
+#endif
     const uint8 bits0to3 = static_cast<uint8>(instruction >> 12);
     const uint8 bits0to1 = static_cast<uint8>(instruction >> 14);
     const uint8 bits2to3 = static_cast<uint8>((instruction >> 12) & 0x3u);
@@ -58,9 +58,9 @@ void Cpu68000::fetch() {
     const uint8 bits11to12 = static_cast<uint8>((instruction >> 3) & 0x3u);
     const uint8 bit10 = static_cast<uint8>((instruction >> 5) & 0x1u);
 
-    if (instructionCounter == 100) {
-        std::cout << "break here" << std::endl;
-    }
+    //if (instructionCounter == 100) {
+    //    std::cout << "break here" << std::endl;
+    //}
 
     switch (bits0to3) {
         case 0b0000: {
@@ -583,7 +583,9 @@ void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     write(dstAddressingMode, operationSize, bits13to15, value, dstStream);
 
     postStream << '\n';
+#if defined(LOG)
     std::cout << preStream.str() << " " << srcStream.str() << ", " << dstStream.str() << postStream.str();
+#endif
 }
 void Cpu68000::SUBI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
@@ -721,8 +723,9 @@ void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     write(addressingMode, operationSize, reg, value, dstStream);
     
     postStream << '\n';
-
+#if defined(LOG)
     std::cout << preStream.str() << " " <<srcStream.str() << ", " << dstStream.str() << postStream.str();
+#endif
 }
 void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BCHG(uint8 bits10to12, uint8 bits13to15) {}
@@ -1056,8 +1059,9 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
     write(dstAddressingMode, operationSize, bits4to6, srcValue, dstStream);
 
     postStream << '\n';
-
+#if defined(LOG)
     std::cout << preStream.str() << srcStream.str()<< ", " << dstStream.str() << postStream.str();
+#endif
 
 }
 void Cpu68000::ILLEGAL() {}
@@ -1078,7 +1082,9 @@ void Cpu68000::JSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::JMP(uint8 bits10to12, uint8 bits13to15) {
     const uint32 value = bus->read<uint32>(PC);
     PC = value;
+#if defined(LOG)
     std::cout << "jmp " << static_cast<int>(value) << std::endl;
+#endif
 }
 void Cpu68000::MOVEM(uint8 bit5, uint8 bit9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {
@@ -1086,13 +1092,17 @@ void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {
     //7
     //1 abs long
     const int reg = static_cast<int>(bits4to6);
+#if defined(LOG)
     std::cout << "lea ";
+#endif
     if (bits10to12 == 7) { // should do always?
         if (bits13to15 == 1) { // Abs.l
             const uint32 value = bus->read<uint32>(PC);
             PC += 4;
             A[reg].l = value;
+#if defined(LOG)
             std::cout << value << ", A[" << reg << "] " << std::endl;
+#endif
         }
     }
 }
@@ -1107,14 +1117,18 @@ void Cpu68000::MOVEtoSR(uint8 bits10to12, uint8 bits13to15) {
     const uint32 value = bus->read<uint32>(PC);
     PC += 4;
     SR = value;
+#if defined(LOG)
     std::cout << "movetoSR " << static_cast<int>(value) << std::endl;
+#endif
 }
 void Cpu68000::NEGX(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::CLR(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::NEG(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::NOT(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::DBcc(uint8 bits4to7, uint8 bits13to15) {
+#if defined(LOG)
     std::cout << "dbra_";
+#endif
     const int condition = static_cast<int>(bits4to7);
     const int reg = static_cast<int>(bits13to15);
     const uint16 value = bus->read<uint16>(PC);
@@ -1122,11 +1136,15 @@ void Cpu68000::DBcc(uint8 bits4to7, uint8 bits13to15) {
     PC += 2; // might need to undo
     switch (condition) {
         case 0b0000: {
+#if defined(LOG)
             std::cout << "true";
+#endif
             break;
         }
         case 0b0001: {
+#if defined(LOG)
             std::cout << "false D[" << reg << "], " << value << " " << std::dec << displacement << std::hex;
+#endif
             if (D[reg].w == 0) {
                 // continue to next instruction
             }
@@ -1193,7 +1211,9 @@ void Cpu68000::DBcc(uint8 bits4to7, uint8 bits13to15) {
             break;
         }
     }
+#if defined(LOG)
     std::cout << std::endl;
+#endif
 }
 void Cpu68000::Scc(uint8 bits4to7, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::SUBQ(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
@@ -1288,12 +1308,16 @@ void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {
 
     dstStream << std::hex << static_cast<int>(displacement);
     postStream << '\n';
+#if defined(LOG)
     std::cout << preStream.str() << " " << dstStream.str() << " " << postStream.str();
+#endif
 }
 void Cpu68000::MOVEQ(uint8 bits4to6, uint8 bits8to15) {
     const int reg = static_cast<int>(bits4to6);
     D[reg].l = bits8to15;
+#if defined(LOG)
     std::cout << "moveq " <<static_cast<int>(bits8to15) << ", D[" << reg << "]" << std::endl;
+#endif
 }
 void Cpu68000::DIVS(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::DIVU(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}

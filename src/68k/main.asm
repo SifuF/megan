@@ -170,8 +170,9 @@ NextVDPSetting                   ; rr=reg0    rr=reg1    rr=reg2
 	dbra d2,NextVDPSetting
 
 
-;	move.w	#($FFFF/2)-1,d0      ;Iterating in words
-	move.w	#3-1,d0              ;Iterating in words
+	move.w	#($FFFF/2)-1,d0      ;Iterating in words
+;	move.w	#($FFFF/4)-1,d0      ;Iterating in words
+;	move.w	#$fff,d0              ;Iterating in words
 	move.l	#$40000000,d1
 	move.l	d1,VDPCtrl
 VRAMClrLoop

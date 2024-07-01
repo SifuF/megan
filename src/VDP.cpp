@@ -173,7 +173,7 @@ void VDP::buildFrame(){
     //}
 
     for (int i = 0; i < height; i++) {
+        drawLine(i, vram.data() + scrollB, 0);
         drawLine(i, vram.data() + scrollA, 0);
-        drawLine(i, vram.data() + scrollB, 0);   
     }
 }
