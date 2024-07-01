@@ -134,7 +134,7 @@ public:
             std::cout << "Error - write above address space!";
         }
 
-        map[addr] = data;
+        //map[addr] = data;
     }
 
 private:

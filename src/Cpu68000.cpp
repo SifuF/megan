@@ -58,9 +58,9 @@ void Cpu68000::fetch() {
     const uint8 bits11to12 = static_cast<uint8>((instruction >> 3) & 0x3u);
     const uint8 bit10 = static_cast<uint8>((instruction >> 5) & 0x1u);
 
-    //if (instructionCounter == 100) {
-    //    std::cout << "break here" << std::endl;
-    //}
+    if (instructionCounter == 170) {
+        //std::cout << "break here" << std::endl;
+    }
 
     switch (bits0to3) {
         case 0b0000: {

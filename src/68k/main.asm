@@ -140,6 +140,18 @@ TEST_TILE_X
 	dc.l	$10000010
 	dc.l	$00000000
 
+TEST_TILE_FACE
+	dc.l	$03333300
+	dc.l	$30000030
+	dc.l	$30101030
+	dc.l	$30010030
+	dc.l	$32000230
+	dc.l	$03222300
+	dc.l	$00333000
+	dc.l	$00000000
+
+TEST_TILES_END
+
 TEST_TILE_F
 	dc.l	$22223330
 	dc.l	$20000000
@@ -149,8 +161,6 @@ TEST_TILE_F
 	dc.l	$20000000
 	dc.l	$20000000
 	dc.l	$00000000
-
-TEST_TILES_END
 
 START
 	move.b	($A10001),d0         ;TMSS
@@ -170,14 +180,14 @@ NextVDPSetting                   ; rr=reg0    rr=reg1    rr=reg2
 	dbra d2,NextVDPSetting
 
 
-	move.w	#($FFFF/2)-1,d0      ;Iterating in words
+
 ;	move.w	#($FFFF/4)-1,d0      ;Iterating in words
-;	move.w	#$fff,d0              ;Iterating in words
-	move.l	#$40000000,d1
-	move.l	d1,VDPCtrl
-VRAMClrLoop
-	move.w	#$0000,VDPData       ;Fill with zeros (VDP reg15 auto-increment is on)
-	dbra	d0,VRAMClrLoop
+;	move.w	#3,d0              ;Iterating in words
+;	move.l	#$40000000,d1
+;	move.l	d1,VDPCtrl
+;VRAMClrLoop
+;	move.w	#$0000,VDPData       ;Fill with zeros (VDP reg15 auto-increment is on)
+;	dbra	d0,VRAMClrLoop
 
 
     ;Define Palette 0
@@ -215,8 +225,8 @@ TileLoop
 	move.w #$0001,VDPdata           ;0   0   0   0   0   0   0   0       0   0   0   0   0   0   1   1	
 
 
-;	move.w	#($1000/2)-1,d0
-	move.w	#3-1,d0
+	move.w	#($460)-1,d0
+;	move.w	#3-1,d0
 	move.l	#$60000003,d1
 	move.l	d1,VDPCtrl
 ScrollBLoop

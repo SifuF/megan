@@ -51,17 +51,17 @@ void VDP::setup() {
         0x00000000
     };
 
-    *(cram.data() + (0 * 16)) = 0b0000'0000'0000'0000; //set pallet 0
-    *(cram.data() + (0 * 16) + 1) = 0b0000'0000'0000'1110;
-    *(cram.data() + (0 * 16) + 2) = 0b0000'0000'1110'0000;
-    *(cram.data() + (0 * 16) + 3) = 0b0000'1110'0000'0000;
-    *(cram.data() + (0 * 16) + 4) = 0b0000'0000'1110'1110;
+    //*(cram.data() + (0 * 16)) = 0b0000'0000'0000'0000; //set pallet 0
+    //*(cram.data() + (0 * 16) + 1) = 0b0000'0000'0000'1110;
+    //*(cram.data() + (0 * 16) + 2) = 0b0000'0000'1110'0000;
+    //*(cram.data() + (0 * 16) + 3) = 0b0000'1110'0000'0000;
+    //*(cram.data() + (0 * 16) + 4) = 0b0000'0000'1110'1110;
 
-    *(cram.data() + (1 * 16)) = 0b0000'0000'0000'0000; //set pallet 1
-    *(cram.data() + (1 * 16) + 1) = 0b0000'0000'0000'1110;
-    *(cram.data() + (1 * 16) + 2) = 0b0000'0000'1110'0000;
-    *(cram.data() + (1 * 16) + 3) = 0b0000'1110'1110'1110;
-    *(cram.data() + (1 * 16) + 4) = 0b0000'1110'1110'1110;
+    //*(cram.data() + (1 * 16)) = 0b0000'0000'0000'0000; //set pallet 1
+    //*(cram.data() + (1 * 16) + 1) = 0b0000'0000'0000'1110;
+    //*(cram.data() + (1 * 16) + 2) = 0b0000'0000'1110'0000;
+    //*(cram.data() + (1 * 16) + 3) = 0b0000'1110'1110'1110;
+    //*(cram.data() + (1 * 16) + 4) = 0b0000'1110'1110'1110;
 
     //std::memcpy(vram.data(), x, 32); //copy tile X into 0th tile
     //std::memcpy(vram.data() + 32, f, 32); //copy tile F into 1th tile
@@ -126,7 +126,7 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet) {
     const int tilesPerLine = width / 8;
     for (int j = 0; j < tilesPerLine; ++j) {
         const auto tileDown = line / 8;
-        int indexa = j + tilesPerLine * tileDown;
+        int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16);
         uint8* indexb = plane + indexa;
         const auto tile = *indexb;
         const unsigned columnIndex = (tile * 32) + 4 * (line % 8);
