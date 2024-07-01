@@ -4,6 +4,16 @@
 
 #include <vector>
 
+enum VDPstate {
+    VRAMread,
+    VRAMwrite,
+    CRAMread,
+    CRAMwrite,
+    VSRAMread,
+    VSRAMwrite,
+    Idle,
+};
+
 class VDP {
 public:
     VDP();
@@ -40,23 +50,56 @@ public:
     }
 
     void processCtrl(uint32 data) {
-        if ((data >> 16) == 0) { // potential register write
+        const auto getAddress = [](uint32 data) -> uint16 {
+            const uint16 bottom = static_cast<uint16>((data >> 16) & 0b0011'1111'1111'1111);
+            const uint16 top = static_cast<uint16>(data << 14);
+            return top | bottom;
+        };
+
+        const bool cd1 = static_cast<bool>(data >> 31);
+        const bool cd0 = static_cast<bool>((data >> 30) & 1);
+        const bool cd5 = static_cast<bool>((data >> 7) & 1);
+        const bool cd4 = static_cast<bool>((data >> 6) & 1);
+        const bool cd3 = static_cast<bool>((data >> 5) & 1);
+        const bool cd2 = static_cast<bool>((data >> 4) & 1);
+
+        if (((data >> 16) == 0) && ((data >> 15) == 1)) { // Register write
             const auto index = static_cast<uint8>(data >> 8) - 0x80;
             const auto value = static_cast<uint8>(data);
             reg[index] = value;
         }
-        else if ((data >> 29) == 0) { //VRAM write
-            currentVramAddr = data & 0x1FFFF;
+        else if (cd0 && !cd1 && !cd2 && !cd3 && !cd4 && !cd5) { // VRAM write
+            state = VDPstate::VRAMwrite;
+            currentVramAddr = getAddress(data);
+        }
+        else if (!cd0 && !cd1 && !cd2 && !cd3 && !cd4 && !cd5) { // VRAM read
+            state = VDPstate::VRAMread;
+            currentVramAddr = getAddress(data);
+        }
+        else if (cd0 && cd1 && !cd2 && !cd3 && !cd4 && !cd5) { // CRAM write
+            state = VDPstate::CRAMwrite;
+        }
+        else if (!cd0 && !cd1 && !cd2 && cd3 && !cd4 && !cd5) { // CRAM read
+            state = VDPstate::CRAMread;
+        }
+        else if (cd0 && !cd1 && cd2 && !cd3 && !cd4 && !cd5) { // VSRAM write
+            state = VDPstate::VSRAMwrite;
+        }
+        else if (!cd0 && !cd1 && cd2 && !cd3 && !cd4 && !cd5) { // VSRAM read
+            state = VDPstate::VSRAMread;
         }
     }
 
     void processData(uint32 data) {
-        if ((data >> 29) == 0) { // VRAM write
-            vram[currentVramAddr] = static_cast<uint8>(data >> 24);
-            vram[currentVramAddr + 1] = static_cast<uint8>((data >> 16) & 0xFF);
-            vram[currentVramAddr + 2] = static_cast<uint8>((data >> 8) & 0xFF);
-            vram[currentVramAddr + 3] = static_cast<uint8>(data & 0xFF);
-            currentVramAddr += 4; // autoincrement
+        switch (state) {
+            case VDPstate::VRAMwrite: {
+                vram[currentVramAddr] = static_cast<uint8>(data & 0xFF);
+                vram[currentVramAddr + 1] = static_cast<uint8>((data >> 8) & 0xFF);
+                vram[currentVramAddr + 2] = static_cast<uint8>((data >> 16) & 0xFF);
+                vram[currentVramAddr + 3] = static_cast<uint8>(data >> 24);
+
+                currentVramAddr += 4; // autoincrement
+            }
         }
     }
 
@@ -78,6 +121,7 @@ private:
 
     size_t vramIndex;
 
+    VDPstate state = VDPstate::Idle;
     uint32 currentVramAddr = 0x0000;
 
     std::vector<uint16> reg; // 24 registers
