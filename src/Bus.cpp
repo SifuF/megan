@@ -2,15 +2,17 @@
 
 #include <fstream>
 #include <iterator>
+#include <sstream>
 #include <vector>
 
 Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(true) {
-    std::ifstream input("../roms/main.bin", std::ios::binary);
-    std::vector<unsigned char> buffer(std::istreambuf_iterator<char>(input), {});
+    std::ifstream input("../roms/main.bin", std::ios::binary | std::ios::ate);
+    const auto end = input.tellg();
+    input.seekg(0, std::ios_base::beg);
     map = std::make_unique<uint8[]>(0x1000000);
-    std::memcpy(map.get(), buffer.data(), buffer.size());
+    input.read((char*)map.get(), end);
 
-    //printMemory(BusItem::Rom, 0x100, 0x200);
+    //printMemory(BusItem::Rom, 0x00, 0x100);
     //printMemory(BusItem::Ram, 0, 0xffff);
 
     printHeader();
@@ -24,119 +26,49 @@ Bus::~Bus() {
 void Bus::loop() {
     vdp.setup();
     while (true) {
-        cpu68000.fetch();
+        cpu68000.fetchAndDecode();
         vdp.buildFrame();
         graphics.draw();
     }
 }
 
 void Bus::printHeader() {
-    unsigned s = 0x100;
-    unsigned i = s;
-    std::ios_base::fmtflags f(std::cout.flags());
-    std::cout << std::hex;
+    const auto fillHeaderProperty = [&, this](const std::string& name, int length, std::stringstream & stream) {
+        static int start = 0x100;
+        static unsigned i = start;
+        stream << name << "=";
+        for (; i < start + length; i++) {
+            if (length <= 4) {
+                stream << (int)read<uint8>(i);
+            }
+            else {
+                stream << read<uint8>(i);
+            }
+        }
+        stream << '\n';
+        start = i;
+    };
+    
+    std::stringstream stream;
+    stream << std::hex;
 
-    std::cout << "Console name=";
-    for (; i < s + 16; i++) {
-        std::cout  << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
+    fillHeaderProperty("Console name", 16, stream);
+    fillHeaderProperty("Copyright information", 16, stream);
+    fillHeaderProperty("Domestic name", 48, stream);
+    fillHeaderProperty("Overseas name", 48, stream);
+    fillHeaderProperty("Serial number", 14, stream);
+    fillHeaderProperty("Checksum", 2, stream);
+    fillHeaderProperty("I/O Support", 16, stream);
+    fillHeaderProperty("ROM start address", 4, stream);
+    fillHeaderProperty("ROM end address", 4, stream);
+    fillHeaderProperty("Backup RAM start", 4, stream);
+    fillHeaderProperty("Backup RAM end", 4, stream);
+    fillHeaderProperty("Backup RAM support", 12, stream);
+    fillHeaderProperty("Modem support", 12, stream);
+    fillHeaderProperty("Memo", 40, stream);
+    fillHeaderProperty("Country support", 16, stream);
 
-    std::cout << "Copyright information=";
-    for (; i < s+16; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Domestic name=";
-    for (; i < s + 48; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Overseas name=";
-    for (; i < s + 48; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Serial number=";
-    for (; i < s + 14; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Checksum=";
-    std::cout << read<uint16>(i);
-    std::cout << std::endl;
-    i += 2;
-    s = i;
-
-    std::cout << "I/O Support=";
-    for (; i < s + 16; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "ROM start address=";
-    std::cout << read<uint32>(i);
-    std::cout << std::endl;
-    i += 4;
-    s = i;
-
-    std::cout << "ROM end address=";
-    std::cout << read<uint32>(i);
-    std::cout << std::endl;
-    i += 4;
-    s = i;
-
-    std::cout << "Backup RAM start=";
-    std::cout << read<uint32>(i);
-    std::cout << std::endl;
-    i += 4;
-    s = i;
-
-    std::cout << "Backup RAM end=";
-    std::cout << read<uint32>(i);
-    std::cout << std::endl;
-    i += 4;
-    s = i;
-
-    std::cout << "Backup RAM support=";
-    for (; i < s + 12; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Modem support=";
-    for (; i < s + 12; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Memo=";
-    for (; i < s + 40; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout << "Country support=";
-    for (; i < s + 16; i++) {
-        std::cout << read<uint8>(i);
-    }
-    std::cout << std::endl;
-    s = i;
-
-    std::cout.flags(f);
+    std::cout << stream.str() << std::endl;
 }
 
 void Bus::clearMemory(BusItem busItem) {
@@ -156,32 +88,29 @@ void Bus::clearMemory(BusItem busItem) {
 }
 
 void Bus::printMemory(BusItem busItem, unsigned begin, unsigned end) {
+    const auto buildString = [this, begin, end](uint32 offset) -> std::string {
+        std::stringstream stream;
+        stream << std::hex;
+        for (unsigned i = begin + offset; i < end + offset; i++) {
+            if (!(i % 16))
+                stream << '\n' << "Offset " << i << ": ";
+
+            if (map[i] < 16)
+                stream << 0;
+
+            stream << static_cast<int>(map[i]) << " ";
+        }
+        stream << '\n';
+        return stream.str();
+    };
+
     switch (busItem) {
         case(BusItem::Rom): {
-            for (unsigned i = begin; i < end; i++) {
-                if (!(i % 16))
-                    std::cout << std::endl << "offset " << i << ": ";
-
-                if (map[i] < 16)
-                    std::cout << 0;
-
-                std::cout << static_cast<unsigned char>(map[i]) << " ";
-            }
-            std::cout << std::endl;
+            std::cout << buildString(0x00) << std::endl;
             break;
         }
-
         case(BusItem::Ram): {
-            for (unsigned i = begin + 0xFF0000; i < end + 0xFF0000; i++) {
-                if (!(i % 16))
-                    std::cout << std::endl << "offset " << std::hex << i << ": ";
-
-                if (map[i] < 16)
-                    std::cout << 0;
-
-                std::cout << static_cast<unsigned>(map[i]) << " ";
-            }
-            std::cout << std::endl;
+            std::cout << buildString(0xFF0000) << std::endl;
             break;
         }
         default: {
@@ -189,4 +118,3 @@ void Bus::printMemory(BusItem busItem, unsigned begin, unsigned end) {
         }
     }
 }
-

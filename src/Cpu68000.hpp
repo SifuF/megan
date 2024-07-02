@@ -64,9 +64,7 @@ public:
 
     void reset();
 
-    void fetch();
-    void decode();
-    void execute();
+    void fetchAndDecode();
 
 private:
 
@@ -94,14 +92,6 @@ private:
             }
         }
     };
-
-    //void MOVE(uint8 src, uint8 dst, int size) {};
-    //void ANDI();
-    //void ADD();
-    //void BEQ();
-    //void LEA();
-    //void DBRA();
-    //void JMP();
 
     void ORItoCCR();
     void ORItoSR();

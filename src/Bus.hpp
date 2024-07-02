@@ -2,11 +2,10 @@
 
 #include "defs.hpp"
 #include "Cpu68000.hpp"
-#include "VDP.hpp"
 #include "Graphics.hpp"
+#include "VDP.hpp"
 
 #include <iostream>
-#include <vector>
 
 enum class BusItem {
     Rom,
@@ -100,7 +99,7 @@ public:
     template<typename DataType>
     void write(uint32 addr, DataType data) {
         if (addr < 0x400000) {
-            throw std::runtime_error("ROM write!");
+            //throw std::runtime_error("ROM write!");
         }
         else if (addr < 0x800000) {
             throw std::runtime_error("Sega CD and 32X space write!");

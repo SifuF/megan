@@ -226,7 +226,7 @@ TileLoop
 
 
 	move.w	#($460)-1,d0
-;	move.w	#3-1,d0
+;	move.w	#$1000,d0
 	move.l	#$60000003,d1
 	move.l	d1,VDPCtrl
 ScrollBLoop

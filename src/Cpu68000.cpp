@@ -20,15 +20,14 @@ void Cpu68000::reset() {
     PC = bus->read<uint32>(0x000004);
 }
 
-
-void Cpu68000::fetch() {
+void Cpu68000::fetchAndDecode() {
     static int instructionCounter = -1;
     instructionCounter++;
 
     const uint16 instruction = bus->read<uint16>(PC);
     PC += 2;
 #if defined(LOG)
-    std::cout << std::hex << instruction << " ";
+    std::cout << std::dec << instructionCounter << " " << std::hex << instruction << " ";
 #endif
     const uint8 bits0to3 = static_cast<uint8>(instruction >> 12);
     const uint8 bits0to1 = static_cast<uint8>(instruction >> 14);
@@ -727,7 +726,155 @@ void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     std::cout << preStream.str() << " " <<srcStream.str() << ", " << dstStream.str() << postStream.str();
 #endif
 }
-void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "btst";
+
+    auto read = [this](AddressingMode addressingMode, OperationSize operationSize, int reg, std::stringstream& ss) -> uint32 {
+        uint32 value = 0;
+        ss << std::hex;
+        switch (addressingMode) {
+        case AddressingMode::DataRegister: {
+            ss << "D" << static_cast<int>(reg);
+            if (operationSize == OperationSize::Byte) {
+                value = D[reg].b;
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = D[reg].w;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = D[reg].l;
+            }
+            break;
+        }
+        case AddressingMode::AddressRegister: {
+            ss << "A" << static_cast<int>(reg);
+            if (operationSize == OperationSize::Byte) {
+                value = A[reg].b;
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = A[reg].w;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = A[reg].l;
+            }
+            break;
+        }
+        case AddressingMode::Address: {
+            ss << "(A" << static_cast<int>(reg) << ")";
+            if (operationSize == OperationSize::Byte) {
+                value = bus->read<uint8>(A[reg].l); // addresses are longs
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(A[reg].l); // expansion
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(A[reg].l);
+            }
+            break;
+        }
+        case AddressingMode::AddressPostIncrement: {
+            ss << "(A" << static_cast<int>(reg) << ")+";
+            if (operationSize == OperationSize::Byte) {
+                value = bus->read<uint8>(A[reg].l); // addresses are longs
+                A[reg].b++;
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(A[reg].l); // expansion
+                A[reg].w += 2;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(A[reg].l);
+                A[reg].l += 4;
+            }
+            break;
+        }
+        case AddressingMode::AddressPreDecrement: {
+            ss << "-(A" << static_cast<int>(reg) << ")";
+            if (operationSize == OperationSize::Byte) {
+                A[reg].b--;
+                value = bus->read<uint8>(A[reg].l); // addresses are longs
+            }
+            else if (operationSize == OperationSize::Word) {
+                A[reg].w -= 2;
+                value = bus->read<uint16>(A[reg].l); // expansion
+            }
+            else if (operationSize == OperationSize::Long) {
+                A[reg].l -= 4;
+                value = bus->read<uint32>(A[reg].l);
+            }
+            break;
+        }
+        case AddressingMode::AddressDisplacement: {
+            ss << "displacement(A[" << static_cast<int>(reg) << "])";
+            break;
+        }
+        case AddressingMode::AddressIndex: {
+            ss << "index(A[" << static_cast<int>(reg) << "])";
+            break;
+        }
+        case AddressingMode::ProgramCounterDisplacement: {
+            ss << "PC.displacement";
+            break;
+        }
+        case AddressingMode::ProgramCounterIndex: {
+            ss << "PC.index";
+            break;
+        }
+        case AddressingMode::AbsoluteShort: {
+            const uint16 read = bus->read<uint16>(PC); // might be read<uint32>?
+            PC += 2;
+            value = bus->read<uint16>(read);
+            ss << "($" << static_cast<int>(read) << ")";
+            break;
+        }
+        case AddressingMode::AbsoluteLong: {
+            const uint32 read = bus->read<uint32>(PC);
+            PC += 4;
+            if (operationSize == OperationSize::Byte) {
+                value = bus->read<uint8>(read);
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(read);
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(read);
+            }
+            ss << "($" << static_cast<int>(read) << ")";
+            break;
+        }
+        case AddressingMode::Immediate: {
+            if (operationSize == OperationSize::Byte) {
+                throw std::runtime_error("Invalid intermediate read!");
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(PC);
+                PC += 2;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(PC);
+                PC += 4;
+            }
+            ss << "#$" << static_cast<int>(value);
+            break;
+        }
+        default: {
+            throw std::exception("Unknown addressing mode!");
+            break;
+        }
+        }
+        return value;
+    };
+
+    AddressingMode addressingMode = getAddressingMode(bits10to12, bits13to15);
+    uint32 srcValue = read(addressingMode, OperationSize::Long, bits13to15, srcStream);
+    
+    postStream << '\n';
+#if defined(LOG)
+    std::cout << preStream.str() << srcStream.str() << ", " << dstStream.str() << postStream.str();
+#endif
+
+}
 void Cpu68000::BCHG(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BCLR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::BSET(uint8 bits10to12, uint8 bits13to15) {}
@@ -1066,7 +1213,169 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
 }
 void Cpu68000::ILLEGAL() {}
 void Cpu68000::TAS(uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::TST(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
+void Cpu68000::TST(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "tst";
+
+    auto read = [this](AddressingMode addressingMode, OperationSize operationSize, int reg, std::stringstream& ss) -> uint32 {
+        uint32 value = 0;
+        ss << std::hex;
+        switch (addressingMode) {
+        case AddressingMode::DataRegister: {
+            ss << "D" << static_cast<int>(reg);
+            if (operationSize == OperationSize::Byte) {
+                value = D[reg].b;
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = D[reg].w;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = D[reg].l;
+            }
+            break;
+        }
+        case AddressingMode::AddressRegister: {
+            ss << "A" << static_cast<int>(reg);
+            if (operationSize == OperationSize::Byte) {
+                value = A[reg].b;
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = A[reg].w;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = A[reg].l;
+            }
+            break;
+        }
+        case AddressingMode::Address: {
+            ss << "(A" << static_cast<int>(reg) << ")";
+            if (operationSize == OperationSize::Byte) {
+                value = bus->read<uint8>(A[reg].l); // addresses are longs
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(A[reg].l); // expansion
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(A[reg].l);
+            }
+            break;
+        }
+        case AddressingMode::AddressPostIncrement: {
+            ss << "(A" << static_cast<int>(reg) << ")+";
+            if (operationSize == OperationSize::Byte) {
+                value = bus->read<uint8>(A[reg].l); // addresses are longs
+                A[reg].b++;
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(A[reg].l); // expansion
+                A[reg].w += 2;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(A[reg].l);
+                A[reg].l += 4;
+            }
+            break;
+        }
+        case AddressingMode::AddressPreDecrement: {
+            ss << "-(A" << static_cast<int>(reg) << ")";
+            if (operationSize == OperationSize::Byte) {
+                A[reg].b--;
+                value = bus->read<uint8>(A[reg].l); // addresses are longs
+            }
+            else if (operationSize == OperationSize::Word) {
+                A[reg].w -= 2;
+                value = bus->read<uint16>(A[reg].l); // expansion
+            }
+            else if (operationSize == OperationSize::Long) {
+                A[reg].l -= 4;
+                value = bus->read<uint32>(A[reg].l);
+            }
+            break;
+        }
+        case AddressingMode::AddressDisplacement: {
+            ss << "displacement(A[" << static_cast<int>(reg) << "])";
+            break;
+        }
+        case AddressingMode::AddressIndex: {
+            ss << "index(A[" << static_cast<int>(reg) << "])";
+            break;
+        }
+        case AddressingMode::ProgramCounterDisplacement: {
+            ss << "PC.displacement";
+            break;
+        }
+        case AddressingMode::ProgramCounterIndex: {
+            ss << "PC.index";
+            break;
+        }
+        case AddressingMode::AbsoluteShort: {
+            const uint16 read = bus->read<uint16>(PC); // might be read<uint32>?
+            PC += 2;
+            value = bus->read<uint16>(read);
+            ss << "($" << static_cast<int>(read) << ")";
+            break;
+        }
+        case AddressingMode::AbsoluteLong: {
+            const uint32 read = bus->read<uint32>(PC);
+            PC += 4;
+            if (operationSize == OperationSize::Byte) {
+                value = bus->read<uint8>(read);
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(read);
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(read);
+            }
+            ss << "($" << static_cast<int>(read) << ")";
+            break;
+        }
+        case AddressingMode::Immediate: {
+            if (operationSize == OperationSize::Byte) {
+                throw std::runtime_error("Invalid intermediate read!");
+            }
+            else if (operationSize == OperationSize::Word) {
+                value = bus->read<uint16>(PC);
+                PC += 2;
+            }
+            else if (operationSize == OperationSize::Long) {
+                value = bus->read<uint32>(PC);
+                PC += 4;
+            }
+            ss << "#$" << static_cast<int>(value);
+            break;
+        }
+        default: {
+            throw std::exception("Unknown addressing mode!");
+            break;
+        }
+        }
+        return value;
+    };
+
+    OperationSize operationSize = OperationSize::UnknownSize;
+    if (bits8to9 == 0) {
+        operationSize = OperationSize::Byte;
+        preStream << ".b ";
+    }
+    else if (bits8to9 == 2) {
+        operationSize = OperationSize::Long;
+        preStream << ".l ";
+    }
+    else if (bits8to9 == 1) {
+        operationSize = OperationSize::Word;
+        preStream << ".w ";
+    }
+
+    AddressingMode addressingMode = getAddressingMode(bits10to12, bits13to15);
+
+    auto srcValue = read(addressingMode, operationSize, bits13to15, srcStream);
+    postStream << '\n';
+
+#if defined(LOG)
+    std::cout << preStream.str() << srcStream.str() << ", " << dstStream.str() << postStream.str();
+#endif
+}
 void Cpu68000::TRAP(uint8 bits12to15) {}
 void Cpu68000::LINK(uint8 bits13to15) {}
 void Cpu68000::ULINK(uint8 bits13to15) {}
