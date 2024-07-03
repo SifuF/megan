@@ -1,6 +1,7 @@
 #pragma once
 
 #include "defs.hpp"
+
 #include <array>
 #include <bitset>
 #include <cassert>
@@ -67,6 +68,8 @@ public:
     void fetchAndDecode();
 
 private:
+
+    uint32 read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss);
 
     AddressingMode getAddressingMode(uint8 modeBits, uint8 regBits) const {
         switch (modeBits) {
@@ -181,7 +184,6 @@ private:
     void LSd2(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10, uint8 bits13to15);
     void ROXd2(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10, uint8 bits13to15);
     void ROd2(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10, uint8 bits13to15);
-
 
     std::array<Reg, 8> D{};
     std::array<Reg, 8> A{};  //A7 is SP and SSP

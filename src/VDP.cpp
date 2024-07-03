@@ -17,7 +17,7 @@ void VDP::clearScreen() {
     }
 }
 
-void VDP::setup() {
+void VDP::setupTestData() {
     uint32 f[] = {
         0x12121210,
         0x10000000,
@@ -40,40 +40,29 @@ void VDP::setup() {
         0x00000000
     };
 
-    uint32 a[] = {
-        0x12121210,
-        0x10000010,
-        0x10000010,
-        0x11111110,
-        0x10000010,
-        0x10000010,
-        0x10000010,
-        0x00000000
-    };
+    *(cram.data() + (0 * 16)) = 0b0000'0000'0000'0000; //set pallet 0
+    *(cram.data() + (0 * 16) + 1) = 0b0000'0000'0000'1110;
+    *(cram.data() + (0 * 16) + 2) = 0b0000'0000'1110'0000;
+    *(cram.data() + (0 * 16) + 3) = 0b0000'1110'0000'0000;
+    *(cram.data() + (0 * 16) + 4) = 0b0000'0000'1110'1110;
 
-    //*(cram.data() + (0 * 16)) = 0b0000'0000'0000'0000; //set pallet 0
-    //*(cram.data() + (0 * 16) + 1) = 0b0000'0000'0000'1110;
-    //*(cram.data() + (0 * 16) + 2) = 0b0000'0000'1110'0000;
-    //*(cram.data() + (0 * 16) + 3) = 0b0000'1110'0000'0000;
-    //*(cram.data() + (0 * 16) + 4) = 0b0000'0000'1110'1110;
+    *(cram.data() + (1 * 16)) = 0b0000'0000'0000'0000; //set pallet 1
+    *(cram.data() + (1 * 16) + 1) = 0b0000'0000'0000'1110;
+    *(cram.data() + (1 * 16) + 2) = 0b0000'0000'1110'0000;
+    *(cram.data() + (1 * 16) + 3) = 0b0000'1110'1110'1110;
+    *(cram.data() + (1 * 16) + 4) = 0b0000'1110'1110'1110;
 
-    //*(cram.data() + (1 * 16)) = 0b0000'0000'0000'0000; //set pallet 1
-    //*(cram.data() + (1 * 16) + 1) = 0b0000'0000'0000'1110;
-    //*(cram.data() + (1 * 16) + 2) = 0b0000'0000'1110'0000;
-    //*(cram.data() + (1 * 16) + 3) = 0b0000'1110'1110'1110;
-    //*(cram.data() + (1 * 16) + 4) = 0b0000'1110'1110'1110;
+    std::memcpy(vram.data(), x, 32); //copy tile X into 0th tile
+    std::memcpy(vram.data() + 32, f, 32); //copy tile F into 1th tile
 
-    //std::memcpy(vram.data(), x, 32); //copy tile X into 0th tile
-    //std::memcpy(vram.data() + 32, f, 32); //copy tile F into 1th tile
-
-    //std::memset(vram.data() + scrollA, 0, 64 * 32); //fill Scroll A with tile 0
+    std::memset(vram.data() + scrollA, 0, 64 * 32); //fill Scroll A with tile 0
     //std::memset(vram.data() + scrollB, 1, 64 * 32); //fill Scroll B with tile 1
 
     //random scroll B
-    //for (int i = 0; i < 64 * 32; ++i) {
-    //    const auto r = rand() % 2;
-    //    *(vram.data() + scrollB + i) = r;
-   // }
+    for (int i = 0; i < 64 * 32; ++i) {
+        const auto r = rand() % 2;
+        *(vram.data() + scrollB + i) = r;
+    }
 }
 
 void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet) {
@@ -126,8 +115,8 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet) {
     const int tilesPerLine = width / 8;
     for (int j = 0; j < tilesPerLine; ++j) {
         const auto tileDown = line / 8;
-        int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16);
-        uint8* indexb = plane + indexa;
+        const int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16);
+        const uint8* indexb = plane + indexa;
         const auto tile = *indexb;
         const unsigned columnIndex = (tile * 32) + 4 * (line % 8);
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
@@ -164,7 +153,7 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet) {
 
 void VDP::buildFrame(){
     clearScreen();
-    //static unsigned i = 0;
+
     //for (int i = 0; i < 40; i++) {
     //    for (int j = 0; j < 28; j++) {
     //        drawTile(i, j, *(vram.data() + scrollA + i), 0);

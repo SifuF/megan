@@ -20,7 +20,7 @@ public:
 
     void clearScreen();
     void clearVram();
-    void setup();
+    void setupTestData();
     void buildFrame();
 
     unsigned getWidth() { return width; }

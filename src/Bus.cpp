@@ -17,6 +17,7 @@ Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(true) {
 
     printHeader();
     cpu68000.reset();
+    //vdp.setupTestData(); // debug
     loop();
 }
 
@@ -24,7 +25,6 @@ Bus::~Bus() {
 }
 
 void Bus::loop() {
-    vdp.setup();
     while (true) {
         cpu68000.fetchAndDecode();
         vdp.buildFrame();
