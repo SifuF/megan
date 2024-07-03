@@ -6,6 +6,10 @@
 #include <bitset>
 #include <cassert>
 #include <cstddef>
+#include <functional>
+#include <iostream>
+#include <sstream>
+#include <variant>
 
 #define LOG
 
@@ -60,6 +64,9 @@ enum AddressingMode {
 
 class Cpu68000 {
 public:
+
+    using RegisterVariant = std::variant<uint8*, uint16*, uint32*>;
+
     Cpu68000(Bus* b);
     ~Cpu68000();
 
@@ -70,6 +77,8 @@ public:
 private:
 
     uint32 read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss);
+    
+    void write(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, uint32 value, std::stringstream& ss, std::function<bool(RegisterVariant, uint32 right)> function);
 
     AddressingMode getAddressingMode(uint8 modeBits, uint8 regBits) const {
         switch (modeBits) {
