@@ -76,34 +76,10 @@ public:
 
 private:
 
-    uint32 read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss);
-    
+    uint32 read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss, bool addressOnly = false);
     void write(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, uint32 value, std::stringstream& ss, std::function<bool(RegisterVariant, uint32 right)> function);
-
-    AddressingMode getAddressingMode(uint8 modeBits, uint8 regBits) const {
-        switch (modeBits) {
-            case 0b000: { return AddressingMode::DataRegister; }
-            case 0b001: { return AddressingMode::AddressRegister; }
-            case 0b010: { return AddressingMode::Address; }
-            case 0b011: { return AddressingMode::AddressPostIncrement; }
-            case 0b100: { return AddressingMode::AddressPreDecrement; }
-            case 0b101: { return AddressingMode::AddressDisplacement; }
-            case 0b110: { return AddressingMode::AddressIndex; }
-            case 0b111: {
-                switch (regBits) {
-                case 0b010: { return AddressingMode::ProgramCounterDisplacement; }
-                case 0b011: { return AddressingMode::ProgramCounterIndex; }
-                case 0b000: { return AddressingMode::AbsoluteShort; }
-                case 0b001: { return AddressingMode::AbsoluteLong; }
-                case 0b100: { return AddressingMode::Immediate; }
-                default: { return AddressingMode::UnknownAddress; }
-                }
-            }
-            default: {
-                return AddressingMode::UnknownAddress;
-            }
-        }
-    };
+    OperationSize getOperationSize(uint8 bits, uint8 type, std::stringstream& stream);
+    AddressingMode getAddressingMode(uint8 modeBits, uint8 regBits) const;
 
     void ORItoCCR();
     void ORItoSR();

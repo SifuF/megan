@@ -427,38 +427,14 @@ void Cpu68000::ANDItoSR() {}
 void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     std::stringstream preStream, srcStream, dstStream, postStream;
     preStream << "andi";
-
-    auto statusUpdate = [this](unsigned lastValue) {
-        if (lastValue == 0) {
-            SR.set(StatusRegister::Z, true);
-        }
-        else {
-            SR.set(StatusRegister::Z, false);
-        }
-    };
-
-    OperationSize operationSize = OperationSize::UnknownSize;
-    if (bits8to9 == 0) {
-        operationSize = OperationSize::Byte;
-        preStream << ".b";
-    }
-    else if (bits8to9 == 1) {
-        operationSize = OperationSize::Word;
-        preStream << ".w";
-    }
-    else if (bits8to9 == 2) {
-        operationSize = OperationSize::Long;
-        preStream << ".l";
-    }
-
-    const uint16 value = bus->read<uint16>(PC);
+    
+    const auto value = bus->read<uint16>(PC);
     PC += 2;
     srcStream << std::hex << "$" << value;
 
-    AddressingMode dstAddressingMode = getAddressingMode(bits10to12, bits13to15);
-
-    auto andiFunction = [](RegisterVariant left, uint32_t right) -> bool {
-        return std::visit([right](auto&& ptr) -> bool {
+    bool zero = false;
+    auto andiFunction = [&zero](RegisterVariant left, uint32_t right) -> bool {
+        return std::visit([&zero, right](auto&& ptr) -> bool {
             using T = std::decay_t<decltype(*ptr)>;
             if constexpr (std::is_same_v<T, uint8_t>) {
                 *ptr &= static_cast<uint8_t>(right);
@@ -469,42 +445,73 @@ void Cpu68000::ANDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
             else if constexpr (std::is_same_v<T, uint32_t>) {
                 *ptr &= right;
             }
+
+            if (*ptr == 0) {
+                zero = true;
+            }
             return true;
             }, left);
     };
 
-    this->write(dstAddressingMode, operationSize, bits13to15, value, dstStream, andiFunction);
+    const auto dstAddressingMode = getAddressingMode(bits10to12, bits13to15);
+    const auto operationSize = getOperationSize(bits8to9, 0, preStream);
+    write(dstAddressingMode, operationSize, bits13to15, value, dstStream, andiFunction);
+
+    SR.reset();
+    if (zero) {
+        SR.set(StatusRegister::Z, true);
+    }
+    else {
+        SR.set(StatusRegister::Z, false);
+    }
 
     postStream << '\n';
 #if defined(LOG)
     std::cout << preStream.str() << " " << srcStream.str() << ", " << dstStream.str() << postStream.str();
 #endif
 }
-void Cpu68000::SUBI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
-void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
+
+void Cpu68000::SUBI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     std::stringstream preStream, srcStream, dstStream, postStream;
-    preStream << "addi";
+    preStream << "subi";
 
-    OperationSize operationSize = OperationSize::UnknownSize;
-    if (bits8to9 == 0) {
-        operationSize = OperationSize::Byte;
-        preStream << ".b";
-    }
-    else if (bits8to9 == 1) {
-        operationSize = OperationSize::Word;
-        preStream << ".w";
-    }
-    else if (bits8to9 == 2) {
-        operationSize = OperationSize::Long;
-        preStream << ".l";
-    }
-
-    const auto reg = static_cast<int>(bits13to15);
     const auto value = bus->read<uint32>(PC);
     PC += 4;
     srcStream << std::hex << "#$" << value;
 
-    AddressingMode addressingMode = getAddressingMode(bits10to12, bits13to15);
+    auto subiFunction = [](RegisterVariant left, uint32_t right) -> bool {
+        return std::visit([right](auto&& ptr) -> bool {
+            using T = std::decay_t<decltype(*ptr)>;
+            if constexpr (std::is_same_v<T, uint8_t>) {
+                *ptr -= static_cast<uint8_t>(right);
+            }
+            else if constexpr (std::is_same_v<T, uint16_t>) {
+                *ptr -= static_cast<uint16_t>(right);
+            }
+            else if constexpr (std::is_same_v<T, uint32_t>) {
+                *ptr -= right;
+            }
+            return true;
+            }, left);
+    };
+
+    const auto operationSize = getOperationSize(bits8to9, 0, preStream);
+    const auto dstAddressingMode = getAddressingMode(bits10to12, bits13to15);
+    write(dstAddressingMode, operationSize, bits13to15, value, dstStream, subiFunction);
+
+    postStream << '\n';
+#if defined(LOG)
+    std::cout << preStream.str() << " " << srcStream.str() << ", " << dstStream.str() << postStream.str();
+#endif
+}
+
+void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "addi";
+
+    const auto value = bus->read<uint32>(PC);
+    PC += 4;
+    srcStream << std::hex << "#$" << value;
 
     auto addiFunction = [](RegisterVariant left, uint32_t right) -> bool {
         return std::visit([right](auto&& ptr) -> bool {
@@ -522,13 +529,16 @@ void Cpu68000::ADDI(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
             }, left);
     };
 
-    this->write(addressingMode, operationSize, reg, value, dstStream, addiFunction);
+    const auto operationSize = getOperationSize(bits8to9, 0, preStream);
+    const auto dstAddressingMode = getAddressingMode(bits10to12, bits13to15);
+    write(dstAddressingMode, operationSize, bits13to15, value, dstStream, addiFunction);
     
     postStream << '\n';
 #if defined(LOG)
     std::cout << preStream.str() << " " <<srcStream.str() << ", " << dstStream.str() << postStream.str();
 #endif
 }
+
 void Cpu68000::BTST(uint8 bits10to12, uint8 bits13to15) {
     std::stringstream preStream, srcStream, dstStream, postStream;
     preStream << "btst";
@@ -559,24 +569,9 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
     std::stringstream preStream, srcStream, dstStream, postStream;
     preStream << "move";
 
-    OperationSize operationSize = OperationSize::UnknownSize;
-    if (bits2to3 == 1) {
-        operationSize = OperationSize::Byte;
-        preStream << ".b ";
-    }
-    else if (bits2to3 == 2) {
-        operationSize = OperationSize::Long;
-        preStream << ".l ";
-    }
-    else if (bits2to3 == 3) {
-        operationSize = OperationSize::Word;
-        preStream << ".w ";
-    }
-
-    AddressingMode srcAddressingMode = getAddressingMode(bits10to12, bits13to15);
-    uint32 srcValue = read(srcAddressingMode, operationSize, bits13to15, srcStream);
-    
-    AddressingMode dstAddressingMode = getAddressingMode(bits7to9, bits4to6);
+    const auto operationSize = getOperationSize(bits2to3, 2, preStream);
+    const auto srcAddressingMode = getAddressingMode(bits10to12, bits13to15);
+    const auto srcValue = read(srcAddressingMode, operationSize, bits13to15, srcStream);
     
     auto moveFunction = [] (RegisterVariant left, uint32_t right) -> bool {
         return std::visit([right](auto&& ptr) -> bool {
@@ -594,34 +589,22 @@ void Cpu68000::MOVE(uint8 bits2to3, uint8 bits4to6, uint8 bits7to9, uint8 bits10
             }, left);
     };
 
+    const auto dstAddressingMode = getAddressingMode(bits7to9, bits4to6);
     write(dstAddressingMode, operationSize, bits4to6, srcValue, dstStream, moveFunction);
 
     postStream << '\n';
 #if defined(LOG)
     std::cout << preStream.str() << srcStream.str()<< ", " << dstStream.str() << postStream.str();
 #endif
-
 }
+
 void Cpu68000::ILLEGAL() {}
 void Cpu68000::TAS(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::TST(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {
     std::stringstream preStream, srcStream, dstStream, postStream;
     preStream << "tst";
 
-    OperationSize operationSize = OperationSize::UnknownSize;
-    if (bits8to9 == 0) {
-        operationSize = OperationSize::Byte;
-        preStream << ".b ";
-    }
-    else if (bits8to9 == 2) {
-        operationSize = OperationSize::Long;
-        preStream << ".l ";
-    }
-    else if (bits8to9 == 1) {
-        operationSize = OperationSize::Word;
-        preStream << ".w ";
-    }
-
+    OperationSize operationSize = getOperationSize(bits8to9, 0, preStream);
     AddressingMode addressingMode = getAddressingMode(bits10to12, bits13to15);
 
     auto srcValue = read(addressingMode, operationSize, bits13to15, srcStream);
@@ -644,32 +627,50 @@ void Cpu68000::TRAPV() {}
 void Cpu68000::RTR() {}
 void Cpu68000::JSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::JMP(uint8 bits10to12, uint8 bits13to15) {
-    const uint32 value = bus->read<uint32>(PC);
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "jmp";
+
+    const auto value = bus->read<uint32>(PC);
     PC = value;
+    
+    srcStream << std::hex << value;
+    postStream << '\n';
 #if defined(LOG)
-    std::cout << "jmp " << static_cast<int>(value) << std::endl;
+    std::cout << preStream.str() << " " << srcStream.str() << postStream.str();
 #endif
 }
+
 void Cpu68000::MOVEM(uint8 bit5, uint8 bit9, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::LEA(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {
-    //a0
-    //7
-    //1 abs long
-    const int reg = static_cast<int>(bits4to6);
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "lea";
+
+    auto leaFunction = [](RegisterVariant left, uint32_t right) -> bool {
+        return std::visit([right](auto&& ptr) -> bool {
+            using T = std::decay_t<decltype(*ptr)>;
+            if constexpr (std::is_same_v<T, uint8_t>) {
+                *ptr = static_cast<uint8_t>(right);
+            }
+            else if constexpr (std::is_same_v<T, uint16_t>) {
+                *ptr = static_cast<uint16_t>(right);
+            }
+            else if constexpr (std::is_same_v<T, uint32_t>) {
+                *ptr = right;
+            }
+            return true;
+            }, left);
+    };
+
+    const auto srcAddressingMode = getAddressingMode(bits10to12, bits13to15);
+    const auto srcValue = read(srcAddressingMode, OperationSize::Long, bits13to15, srcStream, true);
+    write(AddressingMode::AddressRegister, OperationSize::Long, bits4to6, srcValue, dstStream, leaFunction);
+    
+    postStream << '\n';
 #if defined(LOG)
-    std::cout << "lea ";
+    std::cout << preStream.str() << srcStream.str() << ", " << dstStream.str() << postStream.str();
 #endif
-    if (bits10to12 == 7) { // should do always?
-        if (bits13to15 == 1) { // Abs.l
-            const uint32 value = bus->read<uint32>(PC);
-            PC += 4;
-            A[reg].l = value;
-#if defined(LOG)
-            std::cout << value << ", A[" << reg << "] " << std::endl;
-#endif
-        }
-    }
 }
+
 void Cpu68000::CHK(uint8 bits4to6, uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::EXT(uint8 bit9, uint8 bits13to15) {}
 void Cpu68000::NBCD(uint8 bits10to12, uint8 bits13to15) {}
@@ -678,11 +679,16 @@ void Cpu68000::PEA(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEfromSR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEtoCCR(uint8 bits10to12, uint8 bits13to15) {}
 void Cpu68000::MOVEtoSR(uint8 bits10to12, uint8 bits13to15) {
-    const uint32 value = bus->read<uint32>(PC);
-    PC += 4;
-    SR = value;
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "move_to_sr";
+
+    const auto srcAddressingMode = getAddressingMode(bits10to12, bits13to15);
+    const auto srcValue = read(srcAddressingMode, OperationSize::Long, 7, srcStream);
+
+    SR = static_cast<uint16>(srcValue);
+    postStream << '\n';
 #if defined(LOG)
-    std::cout << "movetoSR " << static_cast<int>(value) << std::endl;
+    std::cout << preStream.str() << " " << srcStream.str() << postStream.str();
 #endif
 }
 void Cpu68000::NEGX(uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
@@ -877,10 +883,21 @@ void Cpu68000::Bcc(uint8 bits4to7, uint8 bits8to15) {
 #endif
 }
 void Cpu68000::MOVEQ(uint8 bits4to6, uint8 bits8to15) {
-    const int reg = static_cast<int>(bits4to6);
-    D[reg].l = bits8to15;
+    std::stringstream preStream, srcStream, dstStream, postStream;
+    preStream << "moveq";
+
+    auto data = static_cast<uint32>(bits8to15);    
+    if ((bits8to15 & 0x80) == 0x80) {
+        data |= 0x80000000; // sign-extend to int32
+    }
+    const auto reg = static_cast<int>(bits4to6);
+    D[reg].l = data;
+
+    srcStream << "D" << reg;
+    dstStream << std::hex << static_cast<int>(bits8to15);
+    postStream << "\n";
 #if defined(LOG)
-    std::cout << "moveq " <<static_cast<int>(bits8to15) << ", D[" << reg << "]" << std::endl;
+    std::cout << preStream.str() << " " << srcStream.str() << ", " << dstStream.str() << postStream.str();
 #endif
 }
 void Cpu68000::DIVS(uint8 bits4to6, uint8 bits8to9, uint8 bits10to12, uint8 bits13to15) {}
@@ -915,7 +932,66 @@ void Cpu68000::LSd2(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10, ui
 void Cpu68000::ROXd2(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10, uint8 bits13to15) {}
 void Cpu68000::ROd2(uint8 bits4to6, uint8 bit7, uint8 bits8to9, uint8 bits10, uint8 bits13to15) {}
 
-uint32 Cpu68000::read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss) {
+OperationSize Cpu68000::getOperationSize(uint8 bits, uint8 type, std::stringstream & stream) {
+    switch (type) {
+        case 0: { // ORItoCCR, ORItoSR, ORI, ANDItoCCR, ANDItoSR, ANDI, SUBI, ADDI, EORItoCCR, EORItoSR, EORI, CMPI, NEGX,
+            switch (bits) { // CLR, NEG, NOT, TST, ADDQ, SUBQ, OR, SUB, SUBX, EOR, CMP, CMPA, AND, ADD, ADDX, ASd, LSd, ROXd, ROd
+                case 0: {stream << ".b"; return OperationSize::Byte; }
+                case 1: {stream << ".w"; return OperationSize::Word; }
+                case 2: {stream << ".l"; return OperationSize::Long; }
+                default: {throw std::runtime_error("Invalid operation size!"); }
+            }
+            break;
+        }
+        case 1: { // MOVEP, EXT, MOVEM, SUBA, CMPA, ADDA
+            switch (bits) {
+                case 1: {stream << ".w"; return OperationSize::Word; }
+                case 2: {stream << ".l"; return OperationSize::Long; }
+                default: {throw std::runtime_error("Invalid operation size!"); }
+            }
+            break;
+        }
+        case 2: { // MOVEA, MOVE, CHK,
+            switch (bits) {
+                case 1: {stream << ".b"; return OperationSize::Byte; }
+                case 2: {stream << ".l"; return OperationSize::Long; }
+                case 3: {stream << ".w"; return OperationSize::Word; }
+                default: {throw std::runtime_error("Invalid operation size!"); }
+            }
+            break;
+        }
+        default: {
+            throw std::runtime_error("Invalid operation type!");
+        }
+    }
+}
+
+AddressingMode Cpu68000::getAddressingMode(uint8 modeBits, uint8 regBits) const {
+    switch (modeBits) {
+        case 0b000: { return AddressingMode::DataRegister; }
+        case 0b001: { return AddressingMode::AddressRegister; }
+        case 0b010: { return AddressingMode::Address; }
+        case 0b011: { return AddressingMode::AddressPostIncrement; }
+        case 0b100: { return AddressingMode::AddressPreDecrement; }
+        case 0b101: { return AddressingMode::AddressDisplacement; }
+        case 0b110: { return AddressingMode::AddressIndex; }
+        case 0b111: {
+            switch (regBits) {
+                case 0b010: { return AddressingMode::ProgramCounterDisplacement; }
+                case 0b011: { return AddressingMode::ProgramCounterIndex; }
+                case 0b000: { return AddressingMode::AbsoluteShort; }
+                case 0b001: { return AddressingMode::AbsoluteLong; }
+                case 0b100: { return AddressingMode::Immediate; }
+                default: { return AddressingMode::UnknownAddress; }
+            }
+        }
+        default: {
+            return AddressingMode::UnknownAddress;
+        }
+    }
+}
+
+uint32 Cpu68000::read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss, bool addressOnly) {
     uint32 value = 0;
     ss << std::hex;
     switch (addressingMode) {
@@ -1016,6 +1092,9 @@ uint32 Cpu68000::read(AddressingMode addressingMode, OperationSize operationSize
         case AddressingMode::AbsoluteLong: {
             const uint32 read = bus->read<uint32>(PC);
             PC += 4;
+            if (addressOnly) { // LEA wants this as intermediate
+                return read;
+            }
             if (operationSize == OperationSize::Byte) {
                 value = bus->read<uint8>(read);
             }
