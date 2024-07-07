@@ -683,7 +683,7 @@ void Cpu68000::MOVEtoSR(uint8 bits10to12, uint8 bits13to15) {
     preStream << "move_to_sr";
 
     const auto srcAddressingMode = getAddressingMode(bits10to12, bits13to15);
-    const auto srcValue = read(srcAddressingMode, OperationSize::Long, 7, srcStream);
+    const auto srcValue = read(srcAddressingMode, OperationSize::Long, 7, srcStream, true);
 
     SR = static_cast<uint16>(srcValue);
     postStream << '\n';
