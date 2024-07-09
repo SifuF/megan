@@ -110,15 +110,15 @@ public:
             case VDPstate::VRAMwrite: { // TODO: word write
                 if (sizeof(DataType) == 4) {
                     vram[currentAddr] = static_cast<uint8>(static_cast<uint32>(data) & 0xFF);
-                    vram[currentAddr + 1] = static_cast<uint8>((static_cast<uint32>(data) >> 8) & 0xFF);
-                    vram[currentAddr + 2] = static_cast<uint8>((static_cast<uint32>(data) >> 16) & 0xFF);
-                    vram[currentAddr + 3] = static_cast<uint8>(static_cast<uint32>(data) >> 24);
+                    vram[currentAddr + 1u] = static_cast<uint8>((static_cast<uint32>(data) >> 8) & 0xFF);
+                    vram[currentAddr + 2u] = static_cast<uint8>((static_cast<uint32>(data) >> 16) & 0xFF);
+                    vram[currentAddr + 3u] = static_cast<uint8>(static_cast<uint32>(data) >> 24);
 
                     currentAddr += 4; // autoincrement
                 }
                 else if (sizeof(DataType) == 2) {
                     vram[currentAddr] = static_cast<uint8>(static_cast<uint16>(data) & 0xFF);
-                    vram[currentAddr + 1] = static_cast<uint8>((static_cast<uint16>(data) >> 8) & 0xFF);
+                    vram[currentAddr + 1u] = static_cast<uint8>((static_cast<uint16>(data) >> 8) & 0xFF);
 
                     currentAddr += 2; // autoincrement
                 }

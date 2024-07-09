@@ -56,10 +56,10 @@ public:
                     return map[addr];
                 }
                 case OperationSize::Word: {
-                    return (map[addr] << 8) | map[addr + 1];
+                    return (map[addr] << 8) | map[addr + 1u];
                 }
                 case OperationSize::Long: {
-                    return (map[addr] << 24) | (map[addr + 1] << 16) | (map[addr + 2] << 8) | map[addr + 3];
+                    return (map[addr] << 24) | (map[addr + 1u] << 16) | (map[addr + 2u] << 8) | map[addr + 3];
                 }
                 default: {
                     throw std::runtime_error("Unknown operation size!");
@@ -74,6 +74,15 @@ public:
         }
         else if (addr < 0xA10000) {
             std::cout << "Z80 space read";
+            return 0;
+        }
+        else if (addr == 0xA10008) { // Controller port 1
+            return 0;
+        }
+        else if (addr == 0xA1000A) { // Controller port 2
+            return 0;
+        }
+        else if (addr == 0xA1000C) { // ext port
             return 0;
         }
         else if (addr < 0xA10020) { // TMSS

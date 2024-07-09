@@ -80,6 +80,7 @@ private:
     void write(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, uint32 value, std::stringstream& ss, std::function<bool(RegisterVariant, uint32 right)> function);
     OperationSize getOperationSize(uint8 bits, uint8 type, std::stringstream& stream);
     AddressingMode getAddressingMode(uint8 modeBits, uint8 regBits) const;
+    void updateCodeConditionRegister(unsigned long long value, OperationSize operationSize);
 
     void ORItoCCR();
     void ORItoSR();

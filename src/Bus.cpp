@@ -6,7 +6,7 @@
 #include <vector>
 
 Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(true) {
-    std::ifstream input("../roms/main.bin", std::ios::binary | std::ios::ate);
+    std::ifstream input("../roms/s1built.bin", std::ios::binary | std::ios::ate);
     const auto end = input.tellg();
     input.seekg(0, std::ios_base::beg);
     map = std::make_unique<uint8[]>(0x1000000);
