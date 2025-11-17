@@ -20,5 +20,7 @@ private:
     unsigned width;
     unsigned height;
 
+    unsigned m_scale = 4;
+
     VDP * vdp;
 };
