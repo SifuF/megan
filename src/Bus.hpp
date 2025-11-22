@@ -90,7 +90,10 @@ public:
         }
         else if (addr < 0xFF0000) {
             if (addr == 0xC00004) {
-                return static_cast<DataType>(vdp.getStatus());
+                vdp.readCtrlPort()
+            }
+            else if (addr == 0xC00000) {
+                vdp.readDataPort()
             }
             else {
                 return 0;
@@ -105,8 +108,7 @@ public:
         }
     }
 
-    template<typename DataType>
-    void write(uint32 addr, DataType data) {
+    void write(uint32_t addr, uint16_t data) {
         if (addr < 0x400000) {
             //throw std::runtime_error("ROM write!");
         }
@@ -129,10 +131,10 @@ public:
                 tmss = data;
             }
             else if (addr == 0xC00004) {
-                vdp.processCtrl(data);
+                vdp.writeCtrlPort(data);
             }
             else if (addr == 0xC00000) {
-                vdp.processData(data);
+                vdp.writeDataPort(data);
             }
         }
         else if (addr < 0x1000000) {
