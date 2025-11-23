@@ -2,8 +2,9 @@
 
 #include "defs.hpp"
 
-#include <optional>
 #include <array>
+#include <stdexcept>
+#include <optional>
 #include <vector>
 
 enum VDPstate {
@@ -44,7 +45,7 @@ public:
               - upper byte: (ABXX) with UDS active
               - VDP latches only the active byte; it does not wait for the other byte
         */
-        if (static_cast<uint8_t>(data >> 30) == 0b10)     // register write  
+        if (static_cast<uint8_t>(data >> 14) == 0b10)     // register write  
         {                                                 // |7 6 5|4 3 2 1 0| 7 6 5 4 3 2 1 0|                     
             if (!m_expectingSecondWord)                   // |1 0 ?| RS4-RS0 |      D7-D0     |
             {

@@ -71,7 +71,7 @@ void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet) {
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
             const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row
 
-            const uint8 byte = swap ? m_vram[rowIndex + (3 - i)] : vram[rowIndex + i];
+            const uint8 byte = swap ? m_vram[rowIndex + (3 - i)] : m_vram[rowIndex + i];
             uint8 msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
             uint8 lsn = byte & 0x0F;
 

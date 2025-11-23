@@ -30,41 +30,10 @@ public:
         return { msb, lsb };
     }
 
-    template<typename T>
-    constexpr OperationSize getOperationSize() {
-        if constexpr (sizeof(T) == 1) {
-            return OperationSize::Byte;
-        }
-        else if constexpr (sizeof(T) == 2) {
-            return OperationSize::Word;
-        }
-        else if constexpr (sizeof(T) == 4) {
-            return OperationSize::Long;
-        }
-        else {
-            return OperationSize::UnknownSize;
-        }
-    }
-
-    template<typename DataType>
-    DataType read(uint32 addr) {
-        const OperationSize operationSize = getOperationSize<DataType>();
-
+    uint8_t read8(uint32 addr)
+    {
         if (addr < 0x400000) { // ROM
-            switch (operationSize) {
-                case OperationSize::Byte: {
-                    return map[addr];
-                }
-                case OperationSize::Word: {
-                    return (map[addr] << 8) | map[addr + 1u];
-                }
-                case OperationSize::Long: {
-                    return (map[addr] << 24) | (map[addr + 1u] << 16) | (map[addr + 2u] << 8) | map[addr + 3];
-                }
-                default: {
-                    throw std::runtime_error("Unknown operation size!");
-                }
-            }
+            return m_map[addr];
         }
         else if (addr < 0x800000) {
             throw std::runtime_error("Sega CD and 32X space read!");
@@ -86,30 +55,87 @@ public:
             return 0;
         }
         else if (addr < 0xA10020) { // TMSS
-            return static_cast<DataType>(hasTmss);
+            return static_cast<uint8_t>(hasTmss); // check this
         }
-        else if (addr < 0xFF0000) {
-            if (addr == 0xC00004) {
-                vdp.readCtrlPort()
+        else if (addr < 0xFF0000)
+        {
+            if (addr == 0xC00004)
+            {
+                throw std::runtime_error("error: byte read on VDP CTRL!");
             }
-            else if (addr == 0xC00000) {
-                vdp.readDataPort()
+            else if (addr == 0xC00000)
+            {
+                throw std::runtime_error("error: byte read on VDP DATA!");
             }
-            else {
+            else
+            {
                 return 0;
             }
         }
         else if (addr < 0x1000000) {
-            std::cout << "RAM read ";
-            return 0;
+            return m_map[addr];
         }
         else {
             throw std::runtime_error("Read above address space!");
         }
     }
 
-    void write(uint32_t addr, uint16_t data) {
+    uint16_t read16(uint32 addr)
+    {
+        if (addr < 0x400000) { // ROM
+            return (m_map[addr] << 8) | m_map[addr + 1];
+        }
+        else if (addr < 0x800000) {
+            throw std::runtime_error("Sega CD and 32X space read!");
+        }
+        else if (addr < 0xA00000) {
+            throw std::runtime_error("32X ? space read!");
+        }
+        else if (addr < 0xA10000) {
+            std::cout << "Z80 space read";
+            return 0;
+        }
+        else if (addr == 0xA10008) { // Controller port 1
+            return 0;
+        }
+        else if (addr == 0xA1000A) { // Controller port 2
+            return 0;
+        }
+        else if (addr == 0xA1000C) { // ext port
+            return 0;
+        }
+        else if (addr < 0xA10020) { // TMSS
+            return static_cast<uint16_t>(hasTmss); // check this
+        }
+        else if (addr < 0xFF0000)
+        {
+            if (addr == 0xC00004)
+            {
+                return vdp.readCtrlPort();
+            }
+            else if (addr == 0xC00000)
+            {
+                return vdp.readDataPort();
+            }
+            else
+            {
+                return 0;
+            }
+        }
+        else if (addr < 0x1000000)
+        {
+            return (m_map[addr] << 8) | m_map[addr + 1];
+        }
+        else
+        {
+            throw std::runtime_error("Read above address space!");
+        }
+    }
+
+    void write8(uint32_t addr, uint8_t data)
+    {
         if (addr < 0x400000) {
+            std::cout << "ROM write";
             //throw std::runtime_error("ROM write!");
         }
         else if (addr < 0x800000) {
@@ -131,20 +157,62 @@ public:
                 tmss = data;
             }
             else if (addr == 0xC00004) {
-                vdp.writeCtrlPort(data);
+                throw std::runtime_error("error: byte write on VDP CTRL!");
             }
             else if (addr == 0xC00000) {
-                vdp.writeDataPort(data);
+                throw std::runtime_error("error: byte write on VDP DATA!");
             }
         }
-        else if (addr < 0x1000000) {
-            std::cout << "RAM write";
+        else if (addr < 0x1000000) { // RAM write
+            m_map[addr] = data;
         }
         else {
             std::cout << "Error - write above address space!";
         }
+    }
 
-        //map[addr] = data;
+    void write16(uint32_t addr, uint16_t data)
+    {
+        if (addr < 0x400000) {
+            std::cout << "ROM write";
+            //throw std::runtime_error("ROM write!");
+        }
+        else if (addr < 0x800000) {
+            throw std::runtime_error("Sega CD and 32X space write!");
+        }
+        else if (addr < 0xA00000) {
+            throw std::runtime_error("32X ? space write!");
+        }
+        else if (addr < 0xA10000) {
+            std::cout << "Z80 space write";
+            return;
+        }
+        else if (addr < 0xA10020) {
+            std::cout << "IO write";
+            return;
+        }
+        else if (addr < 0xFF0000)
+        {
+            if (addr == 0xA14000)
+            {
+                tmss = data;
+            }
+            else if (addr == 0xC00004)
+            {
+                vdp.writeCtrlPort(data);
+            }
+            else if (addr == 0xC00000)
+            {
+                vdp.writeDataPort(data);
+            }
+        }
+        else if (addr < 0xFFFFFF) {
+            m_map[addr] = static_cast<uint8_t>(data >> 8);
+            m_map[addr + 1] = static_cast<uint8_t>(data & 0xFF);
+        }
+        else {
+            std::cout << "Error - write above address space!";
+        }
     }
 
 private:
@@ -155,7 +223,7 @@ private:
     uint32 tmss;
     bool hasTmss;
 
-    std::unique_ptr<uint8[]> map = nullptr;
+    std::unique_ptr<uint8[]> m_map = nullptr;
 };
 
 // ----------------------------------------------------------------------------

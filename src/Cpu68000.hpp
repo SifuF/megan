@@ -74,6 +74,9 @@ public:
 
     void fetchAndDecode();
 
+    uint32_t read32(uint32_t addr);
+    void write32(uint32_t addr, uint32_t value);
+
 private:
 
     uint32 read(AddressingMode addressingMode, OperationSize operationSize, uint8 reg, std::stringstream& ss, bool addressOnly = false);

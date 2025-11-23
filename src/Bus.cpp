@@ -9,8 +9,8 @@ Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(true) {
     std::ifstream input("../roms/main.bin", std::ios::binary | std::ios::ate);
     const auto end = input.tellg();
     input.seekg(0, std::ios_base::beg);
-    map = std::make_unique<uint8[]>(0x1000000);
-    input.read((char*)map.get(), end);
+    m_map = std::make_unique<uint8[]>(0x1000000);
+    input.read((char*)m_map.get(), end);
 
     //printMemory(BusItem::Rom, 0x00, 0x100);
     //printMemory(BusItem::Ram, 0, 0xffff);
@@ -43,10 +43,10 @@ void Bus::printHeader() {
         stream << name << "=";
         for (; i < start + length; i++) {
             if (length <= 4) {
-                stream << (int)read<uint8>(i);
+                stream << (int)read8(i);
             }
             else {
-                stream << read<uint8>(i);
+                stream << read8(i);
             }
         }
         stream << '\n';
@@ -78,11 +78,11 @@ void Bus::printHeader() {
 void Bus::clearMemory(BusItem busItem) {
     switch (busItem) {
         case(BusItem::Rom): {
-            std::memset(map.get(), 0, 0x400000);
+            std::memset(m_map.get(), 0, 0x400000);
             break;
         }
         case(BusItem::Ram): {
-            std::memset(map.get() + 0xFF0000, 0, 0xFFFF);
+            std::memset(m_map.get() + 0xFF0000, 0, 0xFFFF);
             break;
         }
         default: {
@@ -99,10 +99,10 @@ void Bus::printMemory(BusItem busItem, unsigned begin, unsigned end) {
             if (!(i % 16))
                 stream << '\n' << "Offset " << i << ": ";
 
-            if (map[i] < 16)
+            if (m_map[i] < 16)
                 stream << 0;
 
-            stream << static_cast<int>(map[i]) << " ";
+            stream << static_cast<int>(m_map[i]) << " ";
         }
         stream << '\n';
         return stream.str();
