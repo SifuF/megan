@@ -197,11 +197,11 @@ public:
             {
                 tmss = data;
             }
-            else if (addr == 0xC00004)
+            else if (addr == 0xC00004 || addr == 0xC00006)
             {
                 vdp.writeCtrlPort(data);
             }
-            else if (addr == 0xC00000)
+            else if (addr == 0xC00000 || addr == 0xC00002)
             {
                 vdp.writeDataPort(data);
             }

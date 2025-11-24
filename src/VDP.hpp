@@ -125,10 +125,10 @@ public:
                 break;
             }
             case 0b0001: { // VRAM write
-                uint32 addr = m_addressRegister & 0xFFFE;  // force even, VDP ignores bit 0
-                uint32 realAddr = addr & 0x7FFF;           // mask to 32 KB VRAM
-                m_vram[realAddr] = static_cast<uint8>(data & 0xFF);
-                m_vram[realAddr + 1] = static_cast<uint8>((data >> 8) & 0xFF);
+                //uint32 addr = m_addressRegister & 0xFFFE;  // force even, VDP ignores bit 0
+                //uint32 realAddr = addr & 0x7FFF;           // mask to 32 KB VRAM
+                m_vram[m_addressRegister] = static_cast<uint8_t>(data >> 8);
+                m_vram[m_addressRegister + 1] = static_cast<uint8_t>(data);
                 m_addressRegister = (m_addressRegister + m_autoIncrement) & 0xFFFF;
                 break;
             }
@@ -137,7 +137,8 @@ public:
                 break;
             }
             case 0b0011: { // CRAM write
-                m_cram[m_addressRegister / 2] = data;
+                const auto index = m_addressRegister / 2;
+                m_cram[index] = data;
                 //currentAddr += 2; // autoincrement
                 break;
             }
@@ -179,7 +180,7 @@ private:
     uint16_t m_addressRegister{};
     uint8_t m_codeRegister{};
     uint16_t m_status{};
-    std::array<uint16_t, 24> m_reg; // 24 registers
+    std::array<uint8_t, 24> m_reg; // 24 registers
     
     std::vector<uint8> m_screen;
 

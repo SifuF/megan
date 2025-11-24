@@ -1481,17 +1481,17 @@ void Cpu68000::write(AddressingMode addressingMode, OperationSize operationSize,
             ss << "($" << static_cast<int>(address) << ")";
             PC += 4;
             if (operationSize == OperationSize::Byte) {
-                auto read = bus->read8(address);
+                uint8_t read{};
                 function(&read, value);
                 bus->write8(address, read);
             }
             else if (operationSize == OperationSize::Word) {
-                auto read = bus->read16(address);
+                uint16_t read{};
                 function(&read, value);
                 bus->write16(address, read);
             }
             else if (operationSize == OperationSize::Long) {
-                auto read = read32(address);
+                uint32_t read{};
                 function(&read, value);
                 write32(address, read);
             }
