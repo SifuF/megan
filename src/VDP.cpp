@@ -1,71 +1,136 @@
 #include "VDP.hpp"
 #include <iostream>
 
-VDP::VDP() {
-    m_screen.resize(m_width * m_height * 4);
+VDP::VDP()
+{
+    m_mainBuffer.data.resize(m_mainBuffer.width * m_mainBuffer.height * 4);
+    m_tileDataBuffer.data.resize(m_tileDataBuffer.width * m_tileDataBuffer.height * 4);
+    m_tileMapBuffer.data.resize(m_tileMapBuffer.width * m_tileMapBuffer.height * 4);
 }
 
-void VDP::clearVram() {
-    for (auto& b : m_vram) {
-        b = 0u;
+uint16_t VDP::readCtrlPort()
+{
+    m_expectingSecondWord = false;
+    return m_status;
+}
+
+void VDP::writeCtrlPort(uint16_t data)
+{
+    /*  All VDP bus accesses are 16 - bit(words).
+
+        Byte writes are technically undefined, but can be emulated by masking into the 16-bit word:
+          - lower byte: (XXAB) with LDS active
+          - upper byte: (ABXX) with UDS active
+          - VDP latches only the active byte; it does not wait for the other byte
+    */
+    if (static_cast<uint8_t>(data >> 14) == 0b10)     // register write  
+    {                                                 // |7 6 5|4 3 2 1 0| 7 6 5 4 3 2 1 0|                     
+        if (!m_expectingSecondWord)                   // |1 0 ?| RS4-RS0 |      D7-D0     |
+        {
+            const auto index = static_cast<uint8_t>((data >> 8) & 0b11111);
+            const auto value = static_cast<uint8>(data);
+            if (index < 24) {
+                m_reg[index] = value;
+            }
+        }
+        m_codeRegister = 0;
+    }
+    else                                        // address write first word
+    {                                           // | 7   6 |5 4 3 2 1 0|7 6 5 4 3 2 1 0|  
+        if (!m_expectingSecondWord)              // |CD1 CD2|   A13-A8  |      A7-A0    |
+        {
+            m_expectingSecondWord = true;       // address write second word
+            m_firstWord = data;                 // |7 6 5 4 3 2 1 0| 7   6   5   4  3 2  1   0 | 
+        }                                       // |0 0 0 0 0 0 0 0|CD5 CD4 CD3 CD2 0 0 CD1 CD0|
+        else
+        {
+            m_expectingSecondWord = false;
+
+            const auto& secondWord = data;
+            const auto CD10 = static_cast<uint8_t>(m_firstWord.value() >> 14);
+            const auto CD5432 = static_cast<uint8_t>((secondWord >> 2) & 0x1F);
+            m_codeRegister = CD5432 | CD10;
+
+            const auto A13toA0 = static_cast<uint16_t>(m_firstWord.value() & 0x3FFF);
+            const auto A15A14 = static_cast<uint16_t>(secondWord << 14);
+            m_addressRegister = A15A14 | A13toA0;
+        }
     }
 }
 
-void VDP::clearScreen() {
-    for (auto& b : m_screen) {
-        b = 0u;
+uint16_t VDP::readDataPort()
+{
+    switch (m_codeRegister & 0xF) {
+        case 0b0000: { // VRAM read
+            const auto msb = m_vram[m_addressRegister];
+            const auto lsb = m_vram[m_addressRegister + 1];
+            return (msb << 8) | lsb; // TODO - wrap, promotion/conversion, read buffer latency
+            break;
+        }
+        case 0b0001: { // VRAM write
+            // do nothing
+            break;
+        }
+        case 0b1000: { // CRAM read
+            break;
+        }
+        case 0b0011: { // CRAM write
+            // do nothing
+            break;
+        }
+        case 0b0100: { // VSRAM read
+            break;
+        }
+        case 0b0101: { // VSRAM write
+            // do nothing
+            break;
+        }
+        default: {
+            throw std::runtime_error("VDP CD3210 bits wrong");
+        }
     }
 }
 
-void VDP::setupTestData() {
-    uint32 f[] = {
-        0x12121210,
-        0x10000000,
-        0x10000000,
-        0x11110000,
-        0x10000000,
-        0x10000000,
-        0x10000000,
-        0x00000000
-    };
-
-    uint32 x[] = {
-        0x11111110,
-        0x22222220,
-        0x33333330,
-        0x44444440,
-        0x33333330,
-        0x22222220,
-        0x11111110,
-        0x00000000
-    };
-
-    *(m_cram.data() + (0 * 16)) = 0b0000'0000'0000'0000; //set pallet 0
-    *(m_cram.data() + (0 * 16) + 1) = 0b0000'0000'0000'1110;
-    *(m_cram.data() + (0 * 16) + 2) = 0b0000'0000'1110'0000;
-    *(m_cram.data() + (0 * 16) + 3) = 0b0000'1110'0000'0000;
-    *(m_cram.data() + (0 * 16) + 4) = 0b0000'0000'1110'1110;
-
-    *(m_cram.data() + (1 * 16)) = 0b0000'0000'0000'0000; //set pallet 1
-    *(m_cram.data() + (1 * 16) + 1) = 0b0000'0000'0000'1110;
-    *(m_cram.data() + (1 * 16) + 2) = 0b0000'0000'1110'0000;
-    *(m_cram.data() + (1 * 16) + 3) = 0b0000'1110'1110'1110;
-    *(m_cram.data() + (1 * 16) + 4) = 0b0000'1110'1110'1110;
-
-    std::memcpy(m_vram.data(), x, 32); //copy tile X into 0th tile
-    std::memcpy(m_vram.data() + 32, f, 32); //copy tile F into 1th tile
-
-    std::memset(m_vram.data() + m_scrollA, 0, 64 * 32); //fill Scroll A with tile 0
-    //std::memset(vram.data() + scrollB, 1, 64 * 32); //fill Scroll B with tile 1
-
-    //random scroll B
-    for (int i = 0; i < 64 * 32; ++i) {
-        const auto r = rand() % 2;
-        *(m_vram.data() + m_scrollB + i) = r;
+void VDP::writeDataPort(uint16_t data)
+{
+    switch (m_codeRegister & 0xF) {
+        case 0b0000: { // VRAM read
+            // do nothing
+            break;
+        }
+        case 0b0001: { // VRAM write
+            //uint32 addr = m_addressRegister & 0xFFFE;  // force even, VDP ignores bit 0
+            //uint32 realAddr = addr & 0x7FFF;           // mask to 32 KB VRAM
+            m_vram[m_addressRegister] = static_cast<uint8_t>(data >> 8);
+            m_vram[m_addressRegister + 1] = static_cast<uint8_t>(data);
+            m_addressRegister = (m_addressRegister + m_autoIncrement) & 0xFFFF;
+            break;
+        }
+        case 0b1000: { // CRAM read
+            // do nothing
+            break;
+        }
+        case 0b0011: { // CRAM write
+            const auto index = m_addressRegister / 2;
+            m_cram[index] = data;
+            //currentAddr += 2; // autoincrement
+            break;
+        }
+        case 0b0100: { // VSRAM read
+            // do nothing
+            break;
+        }
+        case 0b0101: { // VSRAM write
+            break;
+        }
+        default: {
+            throw std::runtime_error("VDP CD3210 bits wrong");
+        }
     }
 }
 
-void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet) {
+void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet)
+{
     const bool swap = true;
     for (unsigned j = 0; j < 8; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
@@ -81,11 +146,11 @@ void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet) {
 
             // x and y are coordinates of tiles, convert to screen pixel coords.
             const unsigned xScreen = x * 8 * 4; // 8 pixels in tile row, 4 bytes RGBA per pixel
-            const unsigned yScreen = y * m_width * 4; // width * 4 RGBA pixels in screen row
+            const unsigned yScreen = y * m_mainBuffer.width * 4; // width * 4 RGBA pixels in screen row
 
             const unsigned tileStartIndex = (xScreen + yScreen * 8 );
             const unsigned col = i * 4 * 2; // each screen pixel is 4 bytes RGBA, and we fill 2 per i
-            const unsigned row = m_width * 4 * j; // width in pixels * 4 bytes per pixel * jth row
+            const unsigned row = m_mainBuffer.width * 4 * j; // width in pixels * 4 bytes per pixel * jth row
 
             const unsigned screenIndex = tileStartIndex + col + row;
 
@@ -100,24 +165,25 @@ void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet) {
             };
 
             if (lsn != 0) {
-                *(reinterpret_cast<uint32*>(m_screen.data() + screenIndex)) = getRGBA(lsn, pallet);
+                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex)) = getRGBA(lsn, pallet);
             }
 
             if (msn != 0) {
-                *(reinterpret_cast<uint32*>(m_screen.data() + screenIndex + sizeof(uint32))) = getRGBA(msn, pallet);
+                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex + sizeof(uint32))) = getRGBA(msn, pallet);
             }
         }
     }
 }
 
-void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet) {
+void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet)
+{
     const bool swap = true;
-    const int tilesPerLine = m_width / 8;
+    const int tilesPerLine = m_mainBuffer.width / 8;
     for (int j = 0; j < tilesPerLine; ++j) {
         const auto tileDown = line / 8;
         const int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16);
         const uint8* indexb = plane + indexa;
-        const auto tile = *indexb;
+        const auto tile = 2;// *indexb; // TODO - tiles indicies are 16 bit!
         const unsigned columnIndex = (tile * 32) + 4 * (line % 8);
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
             const uint8 byte = swap ? m_vram[columnIndex + (3 - i)] : m_vram[columnIndex + i];
@@ -128,7 +194,7 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet) {
                 std::swap(msn, lsn);
             }
 
-            const unsigned screenIndex = 8*i + 8*4*j + 4* m_width * line;
+            const unsigned screenIndex = 8*i + 8*4*j + 4* m_mainBuffer.width * line;
 
             auto getRGBA = [this](uint8 pixel, unsigned pallet) -> uint32 {
                 uint16 colour = *(m_cram.data() + (pallet * 16) + pixel);
@@ -141,28 +207,46 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet) {
             };
 
             if (lsn != 0) {
-                *(reinterpret_cast<uint32*>(m_screen.data() + screenIndex)) = getRGBA(lsn, pallet);
+                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex)) = getRGBA(lsn, pallet);
             }
 
             if (msn != 0) {
-                *(reinterpret_cast<uint32*>(m_screen.data() + screenIndex + sizeof(uint32))) = getRGBA(msn, pallet);
+                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex + sizeof(uint32))) = getRGBA(msn, pallet);
             }
         }
     }
 }
 
-void VDP::buildFrame(){
-    clearScreen();
-
+void VDP::buildFrame()
+{
     //for (int i = 0; i < 40; i++) {
     //    for (int j = 0; j < 28; j++) {
-    //        drawTile(i, j, *(vram.data() + scrollA + i), 0);
-    //        drawTile(i, j, *(vram.data() + scrollB + i), 1);
+    //        drawTile(i, j, *(m_vram.data() + m_scrollA + i), 0);
+    //        drawTile(i, j, *(m_vram.data() + m_scrollB + i), 1);
     //    }
     //}
 
-    for (int i = 0; i < m_height; i++) {
-        drawLine(i, m_vram.data() + m_scrollB, 0);
+    for (int i = 0; i < m_mainBuffer.height; i++)
+    {
+        //drawLine(i, m_vram.data() + m_scrollB, 0);
         drawLine(i, m_vram.data() + m_scrollA, 0);
+    }
+
+    static bool once = false;
+    if (!once) {
+        for (int i = 0; i < m_tileDataBuffer.width * 4 * m_tileDataBuffer.height; i += 4) {
+            m_tileDataBuffer.data[i] = 255;
+            m_tileDataBuffer.data[i + 1] = 0;
+            m_tileDataBuffer.data[i + 2] = 0;
+            m_tileDataBuffer.data[i + 3] = 255;
+        }
+
+        for (int i = 0; i < m_tileMapBuffer.width * 4 * m_tileMapBuffer.height; i += 4) {
+            m_tileMapBuffer.data[i] = 0;
+            m_tileMapBuffer.data[i + 1] = 255;
+            m_tileMapBuffer.data[i + 2] = 0;
+            m_tileMapBuffer.data[i + 3] = 255;
+        }
+        once = true;
     }
 }

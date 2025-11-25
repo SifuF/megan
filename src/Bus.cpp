@@ -5,23 +5,25 @@
 #include <sstream>
 #include <vector>
 
-Bus::Bus() : cpu68000(this), vdp(), graphics(&vdp), hasTmss(true) {
+Bus::Bus() : cpu68000(this)
+{
     std::ifstream input("../roms/main.bin", std::ios::binary | std::ios::ate);
     const auto end = input.tellg();
     input.seekg(0, std::ios_base::beg);
     m_map = std::make_unique<uint8[]>(0x1000000);
     input.read((char*)m_map.get(), end);
 
-    //printMemory(BusItem::Rom, 0x00, 0x100);
-    //printMemory(BusItem::Ram, 0, 0xffff);
-
+    printMemory(0x00, 0x100);
+    printMemory(0, 0xffff, 0xFF0000);
     printHeader();
-    cpu68000.reset();
-    //vdp.setupTestData(); // debug
-    loop();
-}
 
-Bus::~Bus() {
+    cpu68000.reset();
+
+    graphics.create(vdp.getMainFrameBuffer().width, vdp.getMainFrameBuffer().height,
+        vdp.getTileDataFrameBuffer().width, vdp.getTileDataFrameBuffer().height,
+        vdp.getTileMapFrameBuffer().width, vdp.getTileMapFrameBuffer().height);
+
+    loop();
 }
 
 void Bus::loop() {
@@ -31,26 +33,31 @@ void Bus::loop() {
         cpu68000.fetchAndDecode();
         if (counter % 500 == 0) {
             vdp.buildFrame();
-            graphics.draw();
+            graphics.update(vdp.getMainFrameBuffer().data, vdp.getTileDataFrameBuffer().data, vdp.getTileMapFrameBuffer().data);
         }
     }
 }
 
-void Bus::printHeader() {
+void Bus::printHeader()
+{
+    uint32_t start = 0x100;
+    uint32_t index = start;
+
     const auto fillHeaderProperty = [&, this](const std::string& name, int length, std::stringstream & stream) {
-        static int start = 0x100;
-        static unsigned i = start;
         stream << name << "=";
-        for (; i < start + length; i++) {
-            if (length <= 4) {
-                stream << (int)read8(i);
+        for (; index < start + length; index++)
+        {
+            if (length <= 4)
+            {
+                // do nothing
             }
-            else {
-                stream << read8(i);
+            else
+            {
+                stream << read8(index);
             }
         }
         stream << '\n';
-        start = i;
+        start = index;
     };
     
     std::stringstream stream;
@@ -75,50 +82,20 @@ void Bus::printHeader() {
     std::cout << stream.str() << std::endl;
 }
 
-void Bus::clearMemory(BusItem busItem) {
-    switch (busItem) {
-        case(BusItem::Rom): {
-            std::memset(m_map.get(), 0, 0x400000);
-            break;
-        }
-        case(BusItem::Ram): {
-            std::memset(m_map.get() + 0xFF0000, 0, 0xFFFF);
-            break;
-        }
-        default: {
-            break;
-        }
+void Bus::printMemory(uint32_t begin, uint32_t end, uint32_t offset)
+{
+    std::stringstream stream;
+    stream << std::hex;
+    for (unsigned i = begin + offset; i < end + offset; i++)
+    {
+        if (!(i % 16))
+            stream << '\n' << "Offset " << i << ": ";
+
+        if (m_map[i] < 16)
+            stream << 0;
+
+        stream << static_cast<int>(m_map[i]) << " ";
     }
-}
-
-void Bus::printMemory(BusItem busItem, unsigned begin, unsigned end) {
-    const auto buildString = [this, begin, end](uint32 offset) -> std::string {
-        std::stringstream stream;
-        stream << std::hex;
-        for (unsigned i = begin + offset; i < end + offset; i++) {
-            if (!(i % 16))
-                stream << '\n' << "Offset " << i << ": ";
-
-            if (m_map[i] < 16)
-                stream << 0;
-
-            stream << static_cast<int>(m_map[i]) << " ";
-        }
-        stream << '\n';
-        return stream.str();
-    };
-
-    switch (busItem) {
-        case(BusItem::Rom): {
-            std::cout << buildString(0x00) << std::endl;
-            break;
-        }
-        case(BusItem::Ram): {
-            std::cout << buildString(0xFF0000) << std::endl;
-            break;
-        }
-        default: {
-            break;
-        }
-    }
+    stream << '\n';
+    std::cout << stream.str() << std::endl;
 }

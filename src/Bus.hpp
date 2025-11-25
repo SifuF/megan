@@ -7,20 +7,14 @@
 
 #include <iostream>
 
-enum class BusItem {
-    Rom,
-    Ram
-};
-
-class Bus {
+class Bus
+{
 public:
     Bus();
-    ~Bus();
 
     void loop();
 
-    void clearMemory(BusItem busItem);
-    void printMemory(BusItem busItem, unsigned begin, unsigned end);
+    void printMemory(uint32_t begin, uint32_t end, uint32_t offset = 0x000000);
     void printHeader();
 
     template<typename T, typename halfT>
@@ -221,7 +215,7 @@ private:
     Graphics graphics;
 
     uint32 tmss;
-    bool hasTmss;
+    bool hasTmss = true;
 
     std::unique_ptr<uint8[]> m_map = nullptr;
 };
@@ -287,7 +281,6 @@ private:
 // $C0001E                 Disable / Debug register (Mirror)
 // $C0001E     $FEFFFF     Reserved
 // $FF0000     $FFFFFF     68000 RAM
-
 
 // ---------------------------------
 //    z80 Memory map
