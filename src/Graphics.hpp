@@ -26,10 +26,10 @@ private:
     sf::RenderWindow m_scrollMapWindow;
     sf::Texture m_scrollMapTexture;
     sf::Sprite m_scrollMapSprite;
-    unsigned m_scrollMapScale = 2;
+    unsigned m_scrollMapScale = 3;
 
     sf::RenderWindow m_windowMapWindow;
     sf::Texture m_windowMapTexture;
     sf::Sprite m_windowMapSprite;
-    unsigned m_windowMapScale = 1;
+    unsigned m_windowMapScale = 3;
 };

@@ -33,7 +33,8 @@ struct VDPFrameBuffer {
     uint16_t width;
     uint16_t height;
 
-    VDPFrameBuffer(uint16_t w, uint16_t h) : width(w), height(h), data(w * h * 4) {}
+    VDPFrameBuffer(uint16_t w, uint16_t h) : width(w), height(h), data(w* h * 4) {}
+    void clear() { std::memset(data.data(), 0, data.size()); }
 
     std::size_t sizeInTiles() { return (width * height) / 64; } // TODO - cache this
     std::uint8_t widthInTiles() { return width / 8; } // TODO - cache this

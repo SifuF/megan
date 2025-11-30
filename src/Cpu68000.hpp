@@ -11,7 +11,7 @@
 #include <sstream>
 #include <variant>
 
-#define LOG
+//#define LOG
 
 #define BYTE 1
 #define WORD 2
