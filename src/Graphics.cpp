@@ -25,6 +25,22 @@ void Graphics::update(const std::vector<uint8_t>& mainBuffer, const std::vector<
 {
     auto updateAndDraw = [](sf::RenderWindow& window, sf::Texture& texture, sf::Sprite& sprite, const std::vector<uint8_t>& data)
     {
+        sf::Event event;
+        while (window.pollEvent(event))
+        {
+            if (event.type == sf::Event::Closed)
+                window.close();
+
+            if (event.type == sf::Event::Resized)
+            {
+                window.setView(sf::View(sf::FloatRect(
+                    0.f, 0.f,
+                    static_cast<float>(event.size.width),
+                    static_cast<float>(event.size.height)
+                )));
+            }
+        }
+
         texture.update(data.data());
         const auto windowSize = window.getSize();
         const auto textureSize = texture.getSize();
@@ -32,13 +48,6 @@ void Graphics::update(const std::vector<uint8_t>& mainBuffer, const std::vector<
         const auto scaleY = static_cast<float>(windowSize.y) / textureSize.y;
         sprite.setScale(scaleX, scaleY);
         sprite.setTexture(texture);
-
-        sf::Event event;
-        while (window.pollEvent(event))
-        {
-            if (event.type == sf::Event::Closed)
-                window.close();
-        }
 
         window.clear();
         window.draw(sprite);
