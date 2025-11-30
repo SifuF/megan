@@ -128,7 +128,7 @@ uint16_t VDP::vram16(uint16_t addr) {
 
 void VDP::drawDebugDisplays()
 {
-    for (int i = 1; i < 2; i++)
+    for (int i = 1; i < 20; i++)
     {
         drawTile(m_tileDataBuffer, i, i);
     }
@@ -136,19 +136,19 @@ void VDP::drawDebugDisplays()
     const auto planeArea = m_planeWidth * m_planeHeight;
     for (int i = 0; i < planeArea; i++)
     {
-        //drawTile(m_scrollMapBuffer, i, 2);
-        //drawTile(m_scrollMapBuffer, planeArea + i, 1);
+        drawTile(m_scrollMapBuffer, i, vram16(m_scrollA + 2 * i));
+        drawTile(m_scrollMapBuffer, planeArea + i, vram16(m_scrollB + 2 * i));
     }
 
     for (int i = 0; i < m_windowSize * m_windowSize; i++)
     {
-        //drawTile(m_windowMapBuffer, i, 1);
+        drawTile(m_windowMapBuffer, i, 1);
     }
 }
 
 void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
 {
-    for (unsigned j = 0; j < 1; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
+    for (unsigned j = 0; j < 8; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
             const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row (each j has 4 bytes in it)
 
@@ -158,40 +158,74 @@ void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
 
             const unsigned tileStartX = dst % frameBuffer.widthInTiles();
             const unsigned tileStartY = dst / frameBuffer.widthInTiles();
-            const unsigned bufferIndex = ((tileStartX * 8 + i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
+            const unsigned bufferIndex = ((tileStartX * 8 + 2 * i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
 
-            uint16 colour = *(m_cram.data() + (0 * 16) + msn);
-            uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
-            uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
-            uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
+            uint8 rr = 0, gg = 0, bb = 0;
+            if (msn == 1) {
+                rr = 255;
+                gg = 0;
+                bb = 0;
+            }
+            if (msn == 2) {
+                rr = 0;
+                gg = 255;
+                bb = 0;
+            }
+            if (msn == 3) {
+                rr = 0;
+                gg = 0;
+                bb = 255;
+            }
 
-            frameBuffer.data[bufferIndex] = r;
-            frameBuffer.data[bufferIndex + 1] = g;
-            frameBuffer.data[bufferIndex + 2] = b;
+            //uint16 colour = *(m_cram.data() + (0 * 16) + msn);
+            //uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
+            //uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
+            //uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
+
+            frameBuffer.data[bufferIndex] = rr;
+            frameBuffer.data[bufferIndex + 1] = gg;
+            frameBuffer.data[bufferIndex + 2] = bb;
             frameBuffer.data[bufferIndex + 3] = 255;
 
-            uint16 colour2 = *(m_cram.data() + (0 * 16) + lsn);
-            uint8 r2 = ((colour & 0x000Fu) >> 1u) * 255 / 8;
-            uint8 g2 = ((colour & 0x00F0u) >> 5u) * 255 / 8;
-            uint8 b2 = ((colour & 0x0F00u) >> 9u) * 255 / 8;
+            rr = 0, gg = 0, bb = 0;
+            if (lsn == 1) {
+                rr = 255;
+                gg = 0;
+                bb = 0;
+            }
+            if (lsn == 2) {
+                rr = 0;
+                gg = 255;
+                bb = 0;
+            }
+            if (lsn == 3) {
+                rr = 0;
+                gg = 0;
+                bb = 255;
+            }
 
-            frameBuffer.data[bufferIndex + 16] = r2;
-            frameBuffer.data[bufferIndex + 1 + 16] = g2;
-            frameBuffer.data[bufferIndex + 2 + 16] = b2;
-            frameBuffer.data[bufferIndex + 3 + 16] = 255;
+            //uint16 colour2 = *(m_cram.data() + (0 * 16) + lsn);
+            //uint8 r2 = ((colour & 0x000Fu) >> 1u) * 255 / 8;
+            //uint8 g2 = ((colour & 0x00F0u) >> 5u) * 255 / 8;
+            //uint8 b2 = ((colour & 0x0F00u) >> 9u) * 255 / 8;
+
+            frameBuffer.data[bufferIndex + 4] = rr;
+            frameBuffer.data[bufferIndex + 5] = gg;
+            frameBuffer.data[bufferIndex + 6] = bb;
+            frameBuffer.data[bufferIndex + 7] = 255;
         }
     }
 }
 
-void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet)
+void VDP::drawLine(unsigned line, uint16_t plane)
 {
     const bool swap = true;
     const int tilesPerLine = m_mainBuffer.width / 8;
     for (int j = 0; j < tilesPerLine; ++j) {
         const auto tileDown = line / 8;
-        const int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16);
-        const uint8* indexb = plane + indexa;
-        const auto tile = 2;// *indexb; // TODO - tiles indicies are 16 bit!
+        const int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16_t);
+        const uint16_t indexb = plane + indexa;
+        const auto tile = 2;//indexb; // TODO - tiles indicies are 16 bit!
         const unsigned columnIndex = (tile * 32) + 4 * (line % 8);
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
             const uint8 byte = swap ? m_vram[columnIndex + (3 - i)] : m_vram[columnIndex + i];
@@ -202,25 +236,61 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet)
                 std::swap(msn, lsn);
             }
 
-            const unsigned screenIndex = 8*i + 8*4*j + 4* m_mainBuffer.width * line;
+            const unsigned bufferIndex = 8*i + 8*4*j + 4* m_mainBuffer.width * line;
 
-            auto getRGBA = [this](uint8 pixel, unsigned pallet) -> uint32 {
-                uint16 colour = *(m_cram.data() + (pallet * 16) + pixel);
-                uint8 r = ((colour & 0x000Fu) >> 1u) * 255 / 8;
-                uint8 g = ((colour & 0x00F0u) >> 5u) * 255 / 8;
-                uint8 b = ((colour & 0x0F00u) >> 9u) * 255 / 8;
-
-                uint32 rgbaColour = (r << 24) | (g << 16) | (b << 8) | 0xFF;
-                return Endian::swapLong(rgbaColour);
-            };
-
-            if (lsn != 0) {
-                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex)) = getRGBA(lsn, pallet);
+            uint8 rr = 0, gg = 0, bb = 0;
+            if (msn == 1) {
+                rr = 255;
+                gg = 0;
+                bb = 0;
+            }
+            if (msn == 2) {
+                rr = 0;
+                gg = 255;
+                bb = 0;
+            }
+            if (msn == 3) {
+                rr = 0;
+                gg = 0;
+                bb = 255;
             }
 
-            if (msn != 0) {
-                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex + sizeof(uint32))) = getRGBA(msn, pallet);
+            //uint16 colour = *(m_cram.data() + (0 * 16) + msn);
+            //uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
+            //uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
+            //uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
+
+            m_mainBuffer.data[bufferIndex] = rr;
+            m_mainBuffer.data[bufferIndex + 1] = gg;
+            m_mainBuffer.data[bufferIndex + 2] = bb;
+            m_mainBuffer.data[bufferIndex + 3] = 255;
+
+            rr = 0, gg = 0, bb = 0;
+            if (lsn == 1) {
+                rr = 255;
+                gg = 0;
+                bb = 0;
             }
+            if (lsn == 2) {
+                rr = 0;
+                gg = 255;
+                bb = 0;
+            }
+            if (lsn == 3) {
+                rr = 0;
+                gg = 0;
+                bb = 255;
+            }
+
+            //uint16 colour2 = *(m_cram.data() + (0 * 16) + lsn);
+            //uint8 r2 = ((colour & 0x000Fu) >> 1u) * 255 / 8;
+            //uint8 g2 = ((colour & 0x00F0u) >> 5u) * 255 / 8;
+            //uint8 b2 = ((colour & 0x0F00u) >> 9u) * 255 / 8;
+
+            m_mainBuffer.data[bufferIndex + 4] = rr;
+            m_mainBuffer.data[bufferIndex + 5] = gg;
+            m_mainBuffer.data[bufferIndex + 6] = bb;
+            m_mainBuffer.data[bufferIndex + 7] = 255;
         }
     }
 }
@@ -239,7 +309,7 @@ void VDP::buildFrame()
 
     for (int i = 0; i < m_mainBuffer.height; i++)
     {
-        //drawLine(i, m_vram.data() + m_scrollB, 0);
-        drawLine(i, m_vram.data() + m_scrollA, 0);
+        //drawLine(i, m_vram.data() + m_scrollB);
+        drawLine(i, m_scrollA);
     }
 }

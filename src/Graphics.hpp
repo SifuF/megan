@@ -21,7 +21,7 @@ private:
     sf::RenderWindow m_tileDataWindow;
     sf::Texture m_tileDataTexture;
     sf::Sprite m_tileDataSprite;
-    unsigned m_tileDataScale = 8;
+    unsigned m_tileDataScale = 1;
 
     sf::RenderWindow m_scrollMapWindow;
     sf::Texture m_scrollMapTexture;

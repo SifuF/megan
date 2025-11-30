@@ -46,7 +46,7 @@ public:
 private:
     uint16_t vram16(uint16_t addr);
     void drawTile(VDPFrameBuffer& frameBuffer, uint16_t bufferIndex, uint16_t tile);
-    void drawLine(unsigned line, uint8 * tile, unsigned pallet);
+    void drawLine(unsigned line, uint16_t plane);
     void drawDebugDisplays();
 
     bool m_debug = true;
