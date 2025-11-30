@@ -7,6 +7,27 @@
 #include <optional>
 #include <vector>
 
+struct TileInfo {
+    TileInfo(uint16_t tile) {
+        priority = static_cast<bool>(tile & 0x1000'0000'0000'0000);
+        pallet = static_cast<uint8_t>((tile >> 13) & 0b0000'0000'0000'0011);
+        verticalFlip = static_cast<bool>(tile & 0b0001'0000'0000'0000);
+        horizontalFlip = static_cast<bool>(tile & 0b0000'1000'0000'0000);
+        tileNumber = static_cast<uint16_t>(tile & 0b0000'0111'1111'1111);
+    }
+    
+    bool priority{};
+    uint8_t pallet{};
+    bool verticalFlip{};
+    bool horizontalFlip{};
+    uint16_t tileNumber{};
+
+    TileInfo(const TileInfo& other) = delete;
+    TileInfo& operator=(const TileInfo& other) = delete;
+    TileInfo(TileInfo&& other) = delete;
+    TileInfo& operator=(TileInfo&& other) = delete;
+};
+
 struct VDPFrameBuffer {
     std::vector<uint8_t> data;
     uint16_t width;
@@ -47,6 +68,7 @@ private:
     uint16_t vram16(uint16_t addr);
     void drawTile(VDPFrameBuffer& frameBuffer, uint16_t bufferIndex, uint16_t tile);
     void drawLine(unsigned line, uint16_t plane);
+    void drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet);
     void drawDebugDisplays();
 
     bool m_debug = true;

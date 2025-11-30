@@ -128,7 +128,7 @@ uint16_t VDP::vram16(uint16_t addr) {
 
 void VDP::drawDebugDisplays()
 {
-    for (int i = 1; i < 20; i++)
+    for (int i = 0; i < m_tileDataBuffer.sizeInTiles(); i++)
     {
         drawTile(m_tileDataBuffer, i, i);
     }
@@ -146,73 +146,32 @@ void VDP::drawDebugDisplays()
     }
 }
 
+void VDP::drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet)
+{
+    uint16_t colourWord = m_cram[pallet * 16 + nibble];
+    frameBuffer.data[index] = ((colourWord >> 1) & 0b111) * 255 / 7;
+    frameBuffer.data[index + 1] = ((colourWord >> 5) & 0b111) * 255 / 7;
+    frameBuffer.data[index + 2] = ((colourWord >> 9) & 0b111) * 255 / 7;
+    frameBuffer.data[index + 3] = 255;
+}
+
 void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
 {
+    const TileInfo info{ tile };
     for (unsigned j = 0; j < 8; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
-            const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row (each j has 4 bytes in it)
+            const unsigned rowIndex = (info.tileNumber * 32) + 4 * (info.verticalFlip ? 7 - j : j); // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row (each j has 4 bytes in it)
 
-            const uint8_t byte = m_vram[rowIndex + i];
-            const uint8_t msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
-            const uint8_t lsn = byte & 0x0F;
+            const auto byte = m_vram[rowIndex + (info.horizontalFlip ? 3 - i : i)];
+            const uint8_t msn = info.horizontalFlip ? byte & 0x0F : byte >> 4;
+            const uint8_t lsn = info.horizontalFlip ? byte >> 4 : byte & 0x0F;
 
             const unsigned tileStartX = dst % frameBuffer.widthInTiles();
             const unsigned tileStartY = dst / frameBuffer.widthInTiles();
             const unsigned bufferIndex = ((tileStartX * 8 + 2 * i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
 
-            uint8 rr = 0, gg = 0, bb = 0;
-            if (msn == 1) {
-                rr = 255;
-                gg = 0;
-                bb = 0;
-            }
-            if (msn == 2) {
-                rr = 0;
-                gg = 255;
-                bb = 0;
-            }
-            if (msn == 3) {
-                rr = 0;
-                gg = 0;
-                bb = 255;
-            }
-
-            //uint16 colour = *(m_cram.data() + (0 * 16) + msn);
-            //uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
-            //uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
-            //uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
-
-            frameBuffer.data[bufferIndex] = rr;
-            frameBuffer.data[bufferIndex + 1] = gg;
-            frameBuffer.data[bufferIndex + 2] = bb;
-            frameBuffer.data[bufferIndex + 3] = 255;
-
-            rr = 0, gg = 0, bb = 0;
-            if (lsn == 1) {
-                rr = 255;
-                gg = 0;
-                bb = 0;
-            }
-            if (lsn == 2) {
-                rr = 0;
-                gg = 255;
-                bb = 0;
-            }
-            if (lsn == 3) {
-                rr = 0;
-                gg = 0;
-                bb = 255;
-            }
-
-            //uint16 colour2 = *(m_cram.data() + (0 * 16) + lsn);
-            //uint8 r2 = ((colour & 0x000Fu) >> 1u) * 255 / 8;
-            //uint8 g2 = ((colour & 0x00F0u) >> 5u) * 255 / 8;
-            //uint8 b2 = ((colour & 0x0F00u) >> 9u) * 255 / 8;
-
-            frameBuffer.data[bufferIndex + 4] = rr;
-            frameBuffer.data[bufferIndex + 5] = gg;
-            frameBuffer.data[bufferIndex + 6] = bb;
-            frameBuffer.data[bufferIndex + 7] = 255;
+            drawPixel(frameBuffer, bufferIndex, msn, info.pallet); // Each md pixel is 1 nibble so we do 2 for each i
+            drawPixel(frameBuffer, bufferIndex + 4, lsn, info.pallet);
         }
     }
 }
@@ -226,7 +185,8 @@ void VDP::drawLine(unsigned line, uint16_t plane)
         const int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16_t);
         const uint16_t indexb = plane + indexa;
         const auto tile = 2;//indexb; // TODO - tiles indicies are 16 bit!
-        const unsigned columnIndex = (tile * 32) + 4 * (line % 8);
+        const TileInfo info{ tile };
+        const unsigned columnIndex = (info.tileNumber * 32) + 4 * (line % 8);
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
             const uint8 byte = swap ? m_vram[columnIndex + (3 - i)] : m_vram[columnIndex + i];
             uint8 msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
@@ -236,61 +196,9 @@ void VDP::drawLine(unsigned line, uint16_t plane)
                 std::swap(msn, lsn);
             }
 
-            const unsigned bufferIndex = 8*i + 8*4*j + 4* m_mainBuffer.width * line;
-
-            uint8 rr = 0, gg = 0, bb = 0;
-            if (msn == 1) {
-                rr = 255;
-                gg = 0;
-                bb = 0;
-            }
-            if (msn == 2) {
-                rr = 0;
-                gg = 255;
-                bb = 0;
-            }
-            if (msn == 3) {
-                rr = 0;
-                gg = 0;
-                bb = 255;
-            }
-
-            //uint16 colour = *(m_cram.data() + (0 * 16) + msn);
-            //uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
-            //uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
-            //uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
-
-            m_mainBuffer.data[bufferIndex] = rr;
-            m_mainBuffer.data[bufferIndex + 1] = gg;
-            m_mainBuffer.data[bufferIndex + 2] = bb;
-            m_mainBuffer.data[bufferIndex + 3] = 255;
-
-            rr = 0, gg = 0, bb = 0;
-            if (lsn == 1) {
-                rr = 255;
-                gg = 0;
-                bb = 0;
-            }
-            if (lsn == 2) {
-                rr = 0;
-                gg = 255;
-                bb = 0;
-            }
-            if (lsn == 3) {
-                rr = 0;
-                gg = 0;
-                bb = 255;
-            }
-
-            //uint16 colour2 = *(m_cram.data() + (0 * 16) + lsn);
-            //uint8 r2 = ((colour & 0x000Fu) >> 1u) * 255 / 8;
-            //uint8 g2 = ((colour & 0x00F0u) >> 5u) * 255 / 8;
-            //uint8 b2 = ((colour & 0x0F00u) >> 9u) * 255 / 8;
-
-            m_mainBuffer.data[bufferIndex + 4] = rr;
-            m_mainBuffer.data[bufferIndex + 5] = gg;
-            m_mainBuffer.data[bufferIndex + 6] = bb;
-            m_mainBuffer.data[bufferIndex + 7] = 255;
+            const unsigned bufferIndex = 8 * i + 8 * 4 * j + 4 * m_mainBuffer.width * line;
+            drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
+            drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
         }
     }
 }
