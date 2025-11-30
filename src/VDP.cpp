@@ -1,13 +1,6 @@
 #include "VDP.hpp"
 #include <iostream>
 
-VDP::VDP()
-{
-    m_mainBuffer.data.resize(m_mainBuffer.width * m_mainBuffer.height * 4);
-    m_tileDataBuffer.data.resize(m_tileDataBuffer.width * m_tileDataBuffer.height * 4);
-    m_tileMapBuffer.data.resize(m_tileMapBuffer.width * m_tileMapBuffer.height * 4);
-}
-
 uint16_t VDP::readCtrlPort()
 {
     m_expectingSecondWord = false;
@@ -129,30 +122,43 @@ void VDP::writeDataPort(uint16_t data)
     }
 }
 
-void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet)
+uint16_t VDP::vram16(uint16_t addr) {
+    return static_cast<uint16_t>((m_vram[addr] << 8) | m_vram[addr + 1]);
+};
+
+void VDP::drawDebugDisplays()
 {
-    const bool swap = true;
+    for (int i = 0; i < m_tileDataBuffer.sizeInTiles(); i++)
+    {
+        drawTile(m_tileDataBuffer, i, i);
+    }
+
+    const auto planeArea = m_planeWidth * m_planeHeight;
+    for (int i = 0; i < planeArea; i++)
+    {
+        drawTile(m_scrollMapBuffer, i, 0);
+        drawTile(m_scrollMapBuffer, planeArea + i, 0);
+    }
+
+    for (int i = 0; i < 1; i++)
+    {
+        //drawTile(m_windowMapBuffer, 2 * planeArea + i, 0);
+    }
+}
+
+void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
+{
     for (unsigned j = 0; j < 8; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
-            const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row
+            const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row (each j has 4 bytes in it)
 
-            const uint8 byte = swap ? m_vram[rowIndex + (3 - i)] : m_vram[rowIndex + i];
-            uint8 msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
-            uint8 lsn = byte & 0x0F;
+            const uint8_t byte = 0;// m_vram[rowIndex + i];
+            const uint8_t  msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
+            const uint8_t  lsn = byte & 0x0F;
 
-            if (swap) {
-                std::swap(msn, lsn);
-            }
-
-            // x and y are coordinates of tiles, convert to screen pixel coords.
-            const unsigned xScreen = x * 8 * 4; // 8 pixels in tile row, 4 bytes RGBA per pixel
-            const unsigned yScreen = y * m_mainBuffer.width * 4; // width * 4 RGBA pixels in screen row
-
-            const unsigned tileStartIndex = (xScreen + yScreen * 8 );
-            const unsigned col = i * 4 * 2; // each screen pixel is 4 bytes RGBA, and we fill 2 per i
-            const unsigned row = m_mainBuffer.width * 4 * j; // width in pixels * 4 bytes per pixel * jth row
-
-            const unsigned screenIndex = tileStartIndex + col + row;
+            const unsigned tileStartX = dst % frameBuffer.widthInTiles();
+            const unsigned tileStartY = dst / frameBuffer.widthInTiles();
+            const unsigned bufferIndex = ((tileStartX * 8 + i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
 
             auto getRGBA = [this](uint8 pixel, unsigned pallet) -> uint32 {
                 uint16 colour = *(m_cram.data() + (pallet * 16) + pixel);
@@ -164,13 +170,15 @@ void VDP::drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet)
                 return Endian::swapLong(rgbaColour);
             };
 
-            if (lsn != 0) {
-                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex)) = getRGBA(lsn, pallet);
-            }
+            frameBuffer.data[bufferIndex] = rand() % 256;
+            frameBuffer.data[bufferIndex + 1] = rand() % 256;
+            frameBuffer.data[bufferIndex + 2] = rand() % 256;
+            frameBuffer.data[bufferIndex + 3] = 255;
 
-            if (msn != 0) {
-                *(reinterpret_cast<uint32*>(m_mainBuffer.data.data() + screenIndex + sizeof(uint32))) = getRGBA(msn, pallet);
-            }
+            frameBuffer.data[bufferIndex + 16] = rand() % 256;
+            frameBuffer.data[bufferIndex + 1 + 16] = rand() % 256;
+            frameBuffer.data[bufferIndex + 2 + 16] = rand() % 256;
+            frameBuffer.data[bufferIndex + 3 + 16] = 255;
         }
     }
 }
@@ -219,6 +227,9 @@ void VDP::drawLine(unsigned line, uint8 * plane, unsigned pallet)
 
 void VDP::buildFrame()
 {
+    if (m_debug) {
+        drawDebugDisplays();
+    }
     //for (int i = 0; i < 40; i++) {
     //    for (int j = 0; j < 28; j++) {
     //        drawTile(i, j, *(m_vram.data() + m_scrollA + i), 0);
@@ -230,23 +241,5 @@ void VDP::buildFrame()
     {
         //drawLine(i, m_vram.data() + m_scrollB, 0);
         drawLine(i, m_vram.data() + m_scrollA, 0);
-    }
-
-    static bool once = false;
-    if (!once) {
-        for (int i = 0; i < m_tileDataBuffer.width * 4 * m_tileDataBuffer.height; i += 4) {
-            m_tileDataBuffer.data[i] = 255;
-            m_tileDataBuffer.data[i + 1] = 0;
-            m_tileDataBuffer.data[i + 2] = 0;
-            m_tileDataBuffer.data[i + 3] = 255;
-        }
-
-        for (int i = 0; i < m_tileMapBuffer.width * 4 * m_tileMapBuffer.height; i += 4) {
-            m_tileMapBuffer.data[i] = 0;
-            m_tileMapBuffer.data[i + 1] = 255;
-            m_tileMapBuffer.data[i + 2] = 0;
-            m_tileMapBuffer.data[i + 3] = 255;
-        }
-        once = true;
     }
 }

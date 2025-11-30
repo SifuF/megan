@@ -8,11 +8,14 @@
 #include <vector>
 
 struct VDPFrameBuffer {
-    std::vector<uint8_t> data{};
-    uint16_t width{};
-    uint16_t height{};
+    std::vector<uint8_t> data;
+    uint16_t width;
+    uint16_t height;
 
-    VDPFrameBuffer(uint16_t w, uint16_t h) : width(w), height(h) {}
+    VDPFrameBuffer(uint16_t w, uint16_t h) : width(w), height(h), data(w * h * 4) {}
+
+    std::size_t sizeInTiles() { return (width * height) / 64; } // TODO - cache this
+    std::size_t widthInTiles() { return width / 8; } // TODO - cache this
 
     VDPFrameBuffer(const VDPFrameBuffer& other) = delete;
     VDPFrameBuffer& operator=(const VDPFrameBuffer& other) = delete;
@@ -22,7 +25,6 @@ struct VDPFrameBuffer {
 
 class VDP {
 public:
-    VDP();
     void buildFrame();
 
     uint16_t readCtrlPort();
@@ -32,16 +34,22 @@ public:
 
     VDPFrameBuffer& getMainFrameBuffer() { return m_mainBuffer; }
     VDPFrameBuffer& getTileDataFrameBuffer() { return m_tileDataBuffer; }
-    VDPFrameBuffer& getTileMapFrameBuffer() { return m_tileMapBuffer; }
+    VDPFrameBuffer& getScrollMapFrameBuffer() { return m_scrollMapBuffer; }
+    VDPFrameBuffer& getWindowMapFrameBuffer() { return m_windowMapBuffer; }
 
+    VDP() = default;
     VDP(const VDP& other) = delete;
     VDP& operator=(const VDP& other) = delete;
     VDP(VDP&& other) = delete;
     VDP& operator=(VDP&& other) = delete;
 
 private:
-    void drawTile(unsigned x, unsigned y, unsigned tile, unsigned pallet);
+    uint16_t vram16(uint16_t addr);
+    void drawTile(VDPFrameBuffer& frameBuffer, uint16_t bufferIndex, uint16_t tile);
     void drawLine(unsigned line, uint8 * tile, unsigned pallet);
+    void drawDebugDisplays();
+
+    bool m_debug = true;
 
     // memory
     std::array<uint8_t, 0xFFFF> m_vram{}; // 0xFFFF bytes
@@ -77,5 +85,6 @@ private:
     // frame buffers
     VDPFrameBuffer m_mainBuffer{ m_screenWidth, m_screenHeight };
     VDPFrameBuffer m_tileDataBuffer{256, 512};
-    VDPFrameBuffer m_tileMapBuffer{ m_planeWidth * 8, ((m_planeHeight * 2) + m_windowSize) * 8 }; // scrollA&B default = 64x32 tiles, window always = 32x32 tiles 
+    VDPFrameBuffer m_scrollMapBuffer{ m_planeWidth * 8, ((m_planeHeight * 2) + m_windowSize) * 8 }; // scrollA&B default = 64x32 tiles
+    VDPFrameBuffer m_windowMapBuffer{ m_windowSize * 8, m_windowSize * 8 }; // window always = 32x32 tiles 
 };

@@ -21,19 +21,22 @@ Bus::Bus() : cpu68000(this)
 
     graphics.create(vdp.getMainFrameBuffer().width, vdp.getMainFrameBuffer().height,
         vdp.getTileDataFrameBuffer().width, vdp.getTileDataFrameBuffer().height,
-        vdp.getTileMapFrameBuffer().width, vdp.getTileMapFrameBuffer().height);
+        vdp.getScrollMapFrameBuffer().width, vdp.getScrollMapFrameBuffer().height);
 
     loop();
 }
 
-void Bus::loop() {
+void Bus::loop()
+{
     unsigned long long counter = 0;
-    while (true) {
+    while (true)
+    {
         counter++;
         cpu68000.fetchAndDecode();
-        if (counter % 500 == 0) {
+        if (counter % 500 == 0)
+        {
             vdp.buildFrame();
-            graphics.update(vdp.getMainFrameBuffer().data, vdp.getTileDataFrameBuffer().data, vdp.getTileMapFrameBuffer().data);
+            graphics.update(vdp.getMainFrameBuffer().data, vdp.getTileDataFrameBuffer().data, vdp.getScrollMapFrameBuffer().data);
         }
     }
 }
