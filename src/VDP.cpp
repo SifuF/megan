@@ -128,7 +128,7 @@ uint16_t VDP::vram16(uint16_t addr) {
 
 void VDP::drawDebugDisplays()
 {
-    for (int i = 0; i < m_tileDataBuffer.sizeInTiles(); i++)
+    for (int i = 1; i < 2; i++)
     {
         drawTile(m_tileDataBuffer, i, i);
     }
@@ -136,23 +136,23 @@ void VDP::drawDebugDisplays()
     const auto planeArea = m_planeWidth * m_planeHeight;
     for (int i = 0; i < planeArea; i++)
     {
-        drawTile(m_scrollMapBuffer, i, 0);
-        drawTile(m_scrollMapBuffer, planeArea + i, 0);
+        //drawTile(m_scrollMapBuffer, i, 2);
+        //drawTile(m_scrollMapBuffer, planeArea + i, 1);
     }
 
     for (int i = 0; i < m_windowSize * m_windowSize; i++)
     {
-        drawTile(m_windowMapBuffer, i, 0);
+        //drawTile(m_windowMapBuffer, i, 1);
     }
 }
 
 void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
 {
-    for (unsigned j = 0; j < 8; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
+    for (unsigned j = 0; j < 1; j++) { // Tiles are 8x8 pixels. Each row contains 8 pixels so loop through 8 rows
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
             const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row (each j has 4 bytes in it)
 
-            const uint8_t byte = 0;// m_vram[rowIndex + i];
+            const uint8_t byte = m_vram[rowIndex + i];
             const uint8_t msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
             const uint8_t lsn = byte & 0x0F;
 
@@ -160,24 +160,24 @@ void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
             const unsigned tileStartY = dst / frameBuffer.widthInTiles();
             const unsigned bufferIndex = ((tileStartX * 8 + i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
 
-            auto getRGBA = [this](uint8 pixel, unsigned pallet) -> uint32 {
-                uint16 colour = *(m_cram.data() + (pallet * 16) + pixel);
-                uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
-                uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
-                uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
+            uint16 colour = *(m_cram.data() + (0 * 16) + msn);
+            uint8 r = ((colour & 0x000Fu) >> 1u) * 255/8;
+            uint8 g = ((colour & 0x00F0u) >> 5u) * 255/8;
+            uint8 b = ((colour & 0x0F00u) >> 9u) * 255/8;
 
-                uint32 rgbaColour = (r << 24) | (g << 16) | (b << 8) | 0xFF;
-                return Endian::swapLong(rgbaColour);
-            };
-
-            frameBuffer.data[bufferIndex] = rand() % 256;
-            frameBuffer.data[bufferIndex + 1] = rand() % 256;
-            frameBuffer.data[bufferIndex + 2] = rand() % 256;
+            frameBuffer.data[bufferIndex] = r;
+            frameBuffer.data[bufferIndex + 1] = g;
+            frameBuffer.data[bufferIndex + 2] = b;
             frameBuffer.data[bufferIndex + 3] = 255;
 
-            frameBuffer.data[bufferIndex + 16] = rand() % 256;
-            frameBuffer.data[bufferIndex + 1 + 16] = rand() % 256;
-            frameBuffer.data[bufferIndex + 2 + 16] = rand() % 256;
+            uint16 colour2 = *(m_cram.data() + (0 * 16) + lsn);
+            uint8 r2 = ((colour & 0x000Fu) >> 1u) * 255 / 8;
+            uint8 g2 = ((colour & 0x00F0u) >> 5u) * 255 / 8;
+            uint8 b2 = ((colour & 0x0F00u) >> 9u) * 255 / 8;
+
+            frameBuffer.data[bufferIndex + 16] = r2;
+            frameBuffer.data[bufferIndex + 1 + 16] = g2;
+            frameBuffer.data[bufferIndex + 2 + 16] = b2;
             frameBuffer.data[bufferIndex + 3 + 16] = 255;
         }
     }

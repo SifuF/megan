@@ -52,7 +52,7 @@ private:
     bool m_debug = true;
 
     // memory
-    std::array<uint8_t, 0xFFFF> m_vram{}; // 0xFFFF bytes
+    std::array<uint8_t, 0x10000> m_vram{}; // 0xFFFF bytes
     std::array<uint16_t, 64> m_cram{}; // 64 9bit words
     std::array<uint16_t, 40> m_vsram{}; // 40 10bit words
     std::array<uint8_t, 24> m_reg; // 24 registers
