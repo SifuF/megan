@@ -140,9 +140,9 @@ void VDP::drawDebugDisplays()
         drawTile(m_scrollMapBuffer, planeArea + i, 0);
     }
 
-    for (int i = 0; i < 1; i++)
+    for (int i = 0; i < m_windowSize * m_windowSize; i++)
     {
-        //drawTile(m_windowMapBuffer, 2 * planeArea + i, 0);
+        drawTile(m_windowMapBuffer, i, 0);
     }
 }
 
@@ -153,8 +153,8 @@ void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
             const unsigned rowIndex = (tile * 32) + 4 * j; // Tiles start at location 0x0000 in VRAM. Each tile is 32 bytes (8x8 pixels x 0.5 bytes per pixel), then 4*j to select row (each j has 4 bytes in it)
 
             const uint8_t byte = 0;// m_vram[rowIndex + i];
-            const uint8_t  msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
-            const uint8_t  lsn = byte & 0x0F;
+            const uint8_t msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
+            const uint8_t lsn = byte & 0x0F;
 
             const unsigned tileStartX = dst % frameBuffer.widthInTiles();
             const unsigned tileStartY = dst / frameBuffer.widthInTiles();

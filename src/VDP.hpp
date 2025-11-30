@@ -85,6 +85,6 @@ private:
     // frame buffers
     VDPFrameBuffer m_mainBuffer{ m_screenWidth, m_screenHeight };
     VDPFrameBuffer m_tileDataBuffer{256, 512};
-    VDPFrameBuffer m_scrollMapBuffer{ m_planeWidth * 8, ((m_planeHeight * 2) + m_windowSize) * 8 }; // scrollA&B default = 64x32 tiles
+    VDPFrameBuffer m_scrollMapBuffer{ m_planeWidth * 8, m_planeHeight * 2 * 8}; // scrollA&B default = 64x32 tiles
     VDPFrameBuffer m_windowMapBuffer{ m_windowSize * 8, m_windowSize * 8 }; // window always = 32x32 tiles 
 };

@@ -1,6 +1,6 @@
 #include "Graphics.hpp"
 
-void Graphics::create(uint16_t mainWidth, uint16_t mainHeight, uint16_t tileDataWidth, uint16_t tileDataHeight, uint16_t tileMapWidth, uint16_t tileMapHeight)
+void Graphics::create(uint16_t mainWidth, uint16_t mainHeight, uint16_t tileDataWidth, uint16_t tileDataHeight, uint16_t scrollMapWidth, uint16_t scrollMapHeight, uint16_t windowMapWidth, uint16_t windowMapHeight)
 {
     auto createWindowAndTexture = [](sf::RenderWindow& window, sf::Texture& texture, uint16_t width, uint16_t height, uint8_t scale, const char* name, const sf::Vector2i& position)
     {
@@ -17,10 +17,11 @@ void Graphics::create(uint16_t mainWidth, uint16_t mainHeight, uint16_t tileData
 
     const auto mainScaledWidth = createWindowAndTexture(m_mainWindow, m_mainTexture, mainWidth, mainHeight, m_mainScale, "Megan - Sega Mega Drive Emulator by SifuF", {startX, startY});
     const auto tileDataScaledWidth = createWindowAndTexture(m_tileDataWindow, m_tileDataTexture, tileDataWidth, tileDataHeight, m_tileDataScale, "Tiles", { startX + mainScaledWidth + delta, startY});
-    createWindowAndTexture(m_tileMapWindow, m_tileMapTexture, tileMapWidth, tileMapHeight, m_tileMapScale, "Tile Maps", { startX + mainScaledWidth + tileDataScaledWidth + 2*delta, startY});
+    const auto scrollMapScaledWidth = createWindowAndTexture(m_scrollMapWindow, m_scrollMapTexture, scrollMapWidth, scrollMapHeight, m_scrollMapScale, "Scroll Maps", { startX + mainScaledWidth + tileDataScaledWidth + 2 * delta, startY });
+    const auto windowMapScaledWidth = createWindowAndTexture(m_windowMapWindow, m_windowMapTexture, windowMapWidth, windowMapHeight, m_windowMapScale, "Window Map", { startX + mainScaledWidth + tileDataScaledWidth + scrollMapScaledWidth + 3 * delta, startY });
 }
 
-void Graphics::update(const std::vector<uint8_t>& mainBuffer, const std::vector<uint8_t>& tileDataBuffer, const std::vector<uint8_t>& tileMapBuffer)
+void Graphics::update(const std::vector<uint8_t>& mainBuffer, const std::vector<uint8_t>& tileDataBuffer, const std::vector<uint8_t>& scrollMapBuffer, const std::vector<uint8_t>& windowMapBuffer)
 {
     auto updateAndDraw = [](sf::RenderWindow& window, sf::Texture& texture, sf::Sprite& sprite, const std::vector<uint8_t>& data)
     {
@@ -46,5 +47,6 @@ void Graphics::update(const std::vector<uint8_t>& mainBuffer, const std::vector<
 
     updateAndDraw(m_mainWindow, m_mainTexture, m_mainSprite, mainBuffer);
     updateAndDraw(m_tileDataWindow, m_tileDataTexture, m_tileDataSprite, tileDataBuffer);
-    updateAndDraw(m_tileMapWindow, m_tileMapTexture, m_tileMapSprite, tileMapBuffer);
+    updateAndDraw(m_scrollMapWindow, m_scrollMapTexture, m_scrollMapSprite, scrollMapBuffer);
+    updateAndDraw(m_windowMapWindow, m_windowMapTexture, m_windowMapSprite, windowMapBuffer);
 }
