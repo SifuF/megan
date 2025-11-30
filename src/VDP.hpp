@@ -36,7 +36,7 @@ struct VDPFrameBuffer {
     VDPFrameBuffer(uint16_t w, uint16_t h) : width(w), height(h), data(w * h * 4) {}
 
     std::size_t sizeInTiles() { return (width * height) / 64; } // TODO - cache this
-    std::size_t widthInTiles() { return width / 8; } // TODO - cache this
+    std::uint8_t widthInTiles() { return width / 8; } // TODO - cache this
 
     VDPFrameBuffer(const VDPFrameBuffer& other) = delete;
     VDPFrameBuffer& operator=(const VDPFrameBuffer& other) = delete;

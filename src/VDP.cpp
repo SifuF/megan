@@ -142,17 +142,19 @@ void VDP::drawDebugDisplays()
 
     for (int i = 0; i < m_windowSize * m_windowSize; i++)
     {
-        drawTile(m_windowMapBuffer, i, 1);
+        drawTile(m_windowMapBuffer, i, vram16(m_window + 2 * i));
     }
 }
 
 void VDP::drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet)
 {
-    uint16_t colourWord = m_cram[pallet * 16 + nibble];
-    frameBuffer.data[index] = ((colourWord >> 1) & 0b111) * 255 / 7;
-    frameBuffer.data[index + 1] = ((colourWord >> 5) & 0b111) * 255 / 7;
-    frameBuffer.data[index + 2] = ((colourWord >> 9) & 0b111) * 255 / 7;
-    frameBuffer.data[index + 3] = 255;
+    if (nibble) {
+        const auto colourWord = m_cram[pallet * 16 + nibble];
+        frameBuffer.data[index] = ((colourWord >> 1) & 0b111) * 255 / 7;
+        frameBuffer.data[index + 1] = ((colourWord >> 5) & 0b111) * 255 / 7;
+        frameBuffer.data[index + 2] = ((colourWord >> 9) & 0b111) * 255 / 7;
+        frameBuffer.data[index + 3] = 255;
+    }
 }
 
 void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
@@ -166,9 +168,9 @@ void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
             const uint8_t msn = info.horizontalFlip ? byte & 0x0F : byte >> 4;
             const uint8_t lsn = info.horizontalFlip ? byte >> 4 : byte & 0x0F;
 
-            const unsigned tileStartX = dst % frameBuffer.widthInTiles();
-            const unsigned tileStartY = dst / frameBuffer.widthInTiles();
-            const unsigned bufferIndex = ((tileStartX * 8 + 2 * i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
+            const auto tileStartX = static_cast<uint8_t>(dst % frameBuffer.widthInTiles());
+            const auto tileStartY = static_cast<uint8_t>(dst / frameBuffer.widthInTiles());
+            const uint32_t bufferIndex = ((tileStartX * 8 + 2 * i) + (tileStartY * 8 + j) * frameBuffer.width) * 4;
 
             drawPixel(frameBuffer, bufferIndex, msn, info.pallet); // Each md pixel is 1 nibble so we do 2 for each i
             drawPixel(frameBuffer, bufferIndex + 4, lsn, info.pallet);
@@ -178,25 +180,19 @@ void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
 
 void VDP::drawLine(unsigned line, uint16_t plane)
 {
-    const bool swap = true;
-    const int tilesPerLine = m_mainBuffer.width / 8;
-    for (int j = 0; j < tilesPerLine; ++j) {
-        const auto tileDown = line / 8;
-        const int indexa = (j + tilesPerLine * tileDown) * sizeof(uint16_t);
-        const uint16_t indexb = plane + indexa;
-        const auto tile = 2;//indexb; // TODO - tiles indicies are 16 bit!
+    const uint16_t verticalScroll = 0;
+    for (int j = 0; j < m_mainBuffer.widthInTiles(); ++j) {
+        const auto tileY = (line + verticalScroll) / 8;
+        const auto index = (j + m_mainBuffer.widthInTiles() * tileY) * 2;
+        const auto tile = vram16(plane + index);
         const TileInfo info{ tile };
-        const unsigned columnIndex = (info.tileNumber * 32) + 4 * (line % 8);
+        const unsigned columnIndex = (info.tileNumber * 32) + 4 * ((line + verticalScroll) % 8);
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
-            const uint8 byte = swap ? m_vram[columnIndex + (3 - i)] : m_vram[columnIndex + i];
-            uint8 msn = byte >> 4;  // Each md pixel is 1 nibble so we do 2 for each i
-            uint8 lsn = byte & 0x0F;
+            const auto byte = m_vram[columnIndex + (info.horizontalFlip ? 3 - i : i)];
+            const uint8_t msn = info.horizontalFlip ? byte & 0x0F : byte >> 4;
+            const uint8_t lsn = info.horizontalFlip ? byte >> 4 : byte & 0x0F;
 
-            if (swap) {
-                std::swap(msn, lsn);
-            }
-
-            const unsigned bufferIndex = 8 * i + 8 * 4 * j + 4 * m_mainBuffer.width * line;
+            const uint32_t bufferIndex = (2 * i + 8 * j + m_mainBuffer.width * line) * 4;
             drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
             drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
         }
@@ -208,16 +204,10 @@ void VDP::buildFrame()
     if (m_debug) {
         drawDebugDisplays();
     }
-    //for (int i = 0; i < 40; i++) {
-    //    for (int j = 0; j < 28; j++) {
-    //        drawTile(i, j, *(m_vram.data() + m_scrollA + i), 0);
-    //        drawTile(i, j, *(m_vram.data() + m_scrollB + i), 1);
-    //    }
-    //}
 
-    for (int i = 0; i < m_mainBuffer.height; i++)
+    for (int line = 0; line < m_mainBuffer.height; line++)
     {
-        //drawLine(i, m_vram.data() + m_scrollB);
-        drawLine(i, m_scrollA);
+        drawLine(line, m_scrollB);
+        drawLine(line, m_scrollA);
     }
 }
