@@ -129,6 +129,8 @@ uint16_t VDP::vram16(uint16_t addr) {
 void VDP::drawDebugDisplays()
 {
     m_scrollMapBuffer.clear();
+    m_windowMapBuffer.clear();
+    m_tileDataBuffer.clear();
 
     for (int i = 0; i < m_tileDataBuffer.sizeInTiles(); i++)
     {
@@ -142,17 +144,17 @@ void VDP::drawDebugDisplays()
         drawTile(m_scrollMapBuffer, planeArea + i, vram16(m_scrollB + 2 * i));
     }
 
-    static uint32_t horizontalScrollA = 0;
-    static uint32_t verticalScrollA = 0;
-    horizontalScrollA++;
-    verticalScrollA++;
+    for (int i = 0; i < m_windowSize * m_windowSize; i++)
+    {
+        drawTile(m_windowMapBuffer, i, vram16(m_window + 2 * i));
+    }
 
-    static uint32_t horizontalScrollB = 0;
-    static uint32_t verticalScrollB = 0;
-    horizontalScrollB++;
-    verticalScrollB++;
+    m_horizontalScrollA++;
+    //m_verticalScrollA++;
+    //m_horizontalScrollB--;
+    m_verticalScrollB--;
 
-    auto drawPlaneBox = [this](VDPFrameBuffer& frameBuffer)
+    auto drawPlaneBox = [this](uint32_t horizontalScroll, uint32_t verticalScroll, uint32_t scrollPlaneSelector)
     {
         auto drawLinePixel = [](VDPFrameBuffer& frameBuffer, uint32_t index)
         {
@@ -163,34 +165,29 @@ void VDP::drawDebugDisplays()
         };
 
         for (int i = 0; i < m_mainBuffer.width; ++i) {
-            const uint32_t x = (horizontalScrollA + i) % (m_planeWidth * 8);
-            const uint32_t y = verticalScrollA % (m_planeHeight * 8);
+            const uint32_t x = (horizontalScroll + i) % (m_planeWidth * 8);
+            const uint32_t y = (verticalScroll % (m_planeHeight * 8)) + scrollPlaneSelector;
             const uint32_t offset = (x + y * (m_planeWidth * 8)) * 4;
             drawLinePixel(m_scrollMapBuffer, offset);
 
-            const uint32_t y2 = (verticalScrollA + m_screenHeight - 1) % (m_planeHeight * 8);
-            const uint32_t offset2 = (x + y2 * (m_planeWidth * 8)) * 4;
-            drawLinePixel(m_scrollMapBuffer, offset2);
+            const uint32_t yBottom = (verticalScroll + m_screenHeight - 1) % (m_planeHeight * 8) + scrollPlaneSelector;
+            const uint32_t offsetRight = (x + yBottom * (m_planeWidth * 8)) * 4;
+            drawLinePixel(m_scrollMapBuffer, offsetRight);
         }
 
         for (int i = 0; i < m_mainBuffer.height; ++i) {
-            const uint32_t x = horizontalScrollA % (m_planeWidth * 8);
-            const uint32_t y = (i + verticalScrollA) % (m_planeHeight * 8);
+            const uint32_t x = horizontalScroll % (m_planeWidth * 8);
+            const uint32_t y = (i + verticalScroll) % (m_planeHeight * 8) + scrollPlaneSelector;
             const uint32_t offset = (x + y * (m_planeWidth * 8)) * 4;
-
             drawLinePixel(m_scrollMapBuffer, offset);
 
-            const uint32_t x2 = (horizontalScrollA + m_screenWidth - 1) % (m_planeWidth * 8);
-            const uint32_t offset2 = (x2 + y * (m_planeWidth * 8)) * 4;
-            drawLinePixel(m_scrollMapBuffer, offset2);
+            const uint32_t xRight = (horizontalScroll + m_screenWidth - 1) % (m_planeWidth * 8);
+            const uint32_t offsetRight = (xRight + y * (m_planeWidth * 8)) * 4;
+            drawLinePixel(m_scrollMapBuffer, offsetRight);
         }
     };
-    drawPlaneBox(m_scrollMapBuffer);
-
-    for (int i = 0; i < m_windowSize * m_windowSize; i++)
-    {
-        drawTile(m_windowMapBuffer, i, vram16(m_window + 2 * i));
-    }
+    drawPlaneBox(m_horizontalScrollA, m_verticalScrollA, 0);
+    drawPlaneBox(m_horizontalScrollB, m_verticalScrollB, m_planeHeight * 8);
 }
 
 void VDP::drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet)
@@ -225,13 +222,13 @@ void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)
     }
 }
 
-void VDP::drawLine(unsigned line, uint16_t plane)
+void VDP::drawLine(unsigned line, uint16_t plane, uint32_t horizontalScroll, uint32_t verticalScroll)
 {
-    const uint16_t verticalScroll = 0;
-    for (int tileX = 0; tileX < m_mainBuffer.widthInTiles(); ++tileX) {
-        const auto tileY = (line + verticalScroll) / 8;
-        const auto index = (tileX + m_planeWidth * tileY) * 2;
-        const auto tile = vram16(plane + index);
+    for (int j = 0; j < m_mainBuffer.widthInTiles(); ++j) {
+        const auto tileY = ((line + verticalScroll) / 8) % m_planeHeight;
+        const auto tileX = ((horizontalScroll + j * 8) / 8) % m_planeWidth;
+        const auto index = (tileX + m_planeWidth * tileY);
+        const auto tile = vram16(plane + 2 * index);
         const TileInfo info{ tile };
         const unsigned columnIndex = (info.tileNumber * 32) + 4 * ((line + verticalScroll) % 8);
         for (unsigned i = 0; i < 4; i++) { // Each row is 1 32bit long so loop through 4 bytes
@@ -239,7 +236,7 @@ void VDP::drawLine(unsigned line, uint16_t plane)
             const uint8_t msn = info.horizontalFlip ? byte & 0x0F : byte >> 4;
             const uint8_t lsn = info.horizontalFlip ? byte >> 4 : byte & 0x0F;
 
-            const uint32_t bufferIndex = (2 * i + 8 * tileX + m_mainBuffer.width * line) * 4;
+            const uint32_t bufferIndex = (2 * i + 8 * j + m_mainBuffer.width * line) * 4;
             drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
             drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
         }
@@ -248,13 +245,15 @@ void VDP::drawLine(unsigned line, uint16_t plane)
 
 void VDP::buildFrame()
 {
+    m_mainBuffer.clear();
+
     if (m_debug) {
         drawDebugDisplays();
     }
-
+    
     for (int line = 0; line < m_mainBuffer.height; line++)
     {
-        drawLine(line, m_scrollB);
-        drawLine(line, m_scrollA);
+        drawLine(line, m_scrollB, m_horizontalScrollB, m_verticalScrollB);
+        drawLine(line, m_scrollA, m_horizontalScrollA, m_verticalScrollA);
     }
 }

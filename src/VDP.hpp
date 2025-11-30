@@ -68,7 +68,7 @@ public:
 private:
     uint16_t vram16(uint16_t addr);
     void drawTile(VDPFrameBuffer& frameBuffer, uint16_t bufferIndex, uint16_t tile);
-    void drawLine(unsigned line, uint16_t plane);
+    void drawLine(unsigned line, uint16_t plane, uint32_t horizontalScroll, uint32_t verticalScroll);
     void drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet);
     void drawDebugDisplays();
 
@@ -94,6 +94,11 @@ private:
     uint16_t m_hScroll = 0xfc00;
 
     uint8_t m_autoIncrement = 2; // TODO - check type
+
+    uint32_t m_horizontalScrollA{};
+    uint32_t m_verticalScrollA{};
+    uint32_t m_horizontalScrollB{};
+    uint32_t m_verticalScrollB{};
 
     uint16_t m_screenWidth = 320;
     uint16_t m_screenHeight = 224;
