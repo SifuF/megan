@@ -7,6 +7,100 @@ uint16_t VDP::readCtrlPort()
     return m_status;
 }
 
+void VDP::updateRegister(uint8_t index, uint8_t value)
+{
+    if (index > 23) {
+        return;
+    }
+
+    m_reg[index] = value;
+
+    switch (index) {
+        case 0: {
+            break;
+        }
+        case 1: {
+            break;
+        }
+        case 2: { // scroll A pattern name table
+            m_scrollA = static_cast<uint16_t>(value) << 10;
+            break;
+        }
+        case 3: { // window pattern name table
+            m_window = static_cast<uint16_t>(value) << 10;
+            break;
+        }
+        case 4: { // scroll B pattern name table
+            m_scrollB = static_cast<uint16_t>(value) << 13;
+            break;
+        }
+        case 5: { // sprite attribute name table
+            m_sprite = static_cast<uint16_t>(value) << 9;
+            break;
+        }
+        case 6: {
+            break;
+        }
+        case 7: {
+            break;
+        }
+        case 8: {
+            break;
+        }
+        case 9: {
+            break;
+        }
+        case 10: {
+            break;
+        }
+        case 11: {
+            break;
+        }
+        case 12: {
+            break;
+        }
+        case 13: { // h scroll B data table
+            m_hScroll = static_cast<uint16_t>(value) << 10; // TODO - check this
+            break;
+        }
+        case 14: {
+            break;
+        }
+        case 15: { // auto increment data
+            m_autoIncrement = value;
+            break;
+        }
+        case 16: {
+            break;
+        }
+        case 17: {
+            break;
+        }
+        case 18: {
+            break;
+        }
+        case 19: {
+            break;
+        }
+        case 20: {
+            break;
+        }
+        case 21: {
+            break;
+        }
+        case 22: {
+            break;
+        }
+        case 23: {
+            break;
+        }
+        default: {
+            throw std::runtime_error("Invalid VDP register selected!");
+            break;
+        }
+    }
+}
+
 void VDP::writeCtrlPort(uint16_t data)
 {
     /*  All VDP bus accesses are 16 - bit(words).
@@ -21,10 +115,8 @@ void VDP::writeCtrlPort(uint16_t data)
         if (!m_expectingSecondWord)                   // |1 0 ?| RS4-RS0 |      D7-D0     |
         {
             const auto index = static_cast<uint8_t>((data >> 8) & 0b11111);
-            const auto value = static_cast<uint8>(data);
-            if (index < 24) {
-                m_reg[index] = value;
-            }
+            const auto value = static_cast<uint8_t>(data);
+            updateRegister(index, value);
         }
         m_codeRegister = 0;
     }
@@ -156,34 +248,34 @@ void VDP::drawDebugDisplays()
 
     auto drawPlaneBox = [this](uint32_t horizontalScroll, uint32_t verticalScroll, uint32_t scrollPlaneSelector)
     {
-        auto drawLinePixel = [](VDPFrameBuffer& frameBuffer, uint32_t index)
+        auto drawLinePixel = [this](uint32_t index)
         {
-            frameBuffer.data[index] = 0;
-            frameBuffer.data[index + 1] = 255;
-            frameBuffer.data[index + 2] = 0;
-            frameBuffer.data[index + 3] = 255;
+            m_scrollMapBuffer.data[index] = 0;
+            m_scrollMapBuffer.data[index + 1] = 255;
+            m_scrollMapBuffer.data[index + 2] = 0;
+            m_scrollMapBuffer.data[index + 3] = 255;
         };
 
         for (int i = 0; i < m_mainBuffer.width; ++i) {
             const uint32_t x = (horizontalScroll + i) % (m_planeWidth * 8);
             const uint32_t y = (verticalScroll % (m_planeHeight * 8)) + scrollPlaneSelector;
             const uint32_t offset = (x + y * (m_planeWidth * 8)) * 4;
-            drawLinePixel(m_scrollMapBuffer, offset);
+            drawLinePixel(offset);
 
             const uint32_t yBottom = (verticalScroll + m_screenHeight - 1) % (m_planeHeight * 8) + scrollPlaneSelector;
             const uint32_t offsetRight = (x + yBottom * (m_planeWidth * 8)) * 4;
-            drawLinePixel(m_scrollMapBuffer, offsetRight);
+            drawLinePixel(offsetRight);
         }
 
         for (int i = 0; i < m_mainBuffer.height; ++i) {
             const uint32_t x = horizontalScroll % (m_planeWidth * 8);
             const uint32_t y = (i + verticalScroll) % (m_planeHeight * 8) + scrollPlaneSelector;
             const uint32_t offset = (x + y * (m_planeWidth * 8)) * 4;
-            drawLinePixel(m_scrollMapBuffer, offset);
+            drawLinePixel(offset);
 
             const uint32_t xRight = (horizontalScroll + m_screenWidth - 1) % (m_planeWidth * 8);
             const uint32_t offsetRight = (xRight + y * (m_planeWidth * 8)) * 4;
-            drawLinePixel(m_scrollMapBuffer, offsetRight);
+            drawLinePixel(offsetRight);
         }
     };
     drawPlaneBox(m_horizontalScrollA, m_verticalScrollA, 0);

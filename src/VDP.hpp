@@ -66,19 +66,20 @@ public:
     VDP& operator=(VDP&& other) = delete;
 
 private:
-    uint16_t vram16(uint16_t addr);
+    void updateRegister(uint8_t index, uint8_t value);
     void drawTile(VDPFrameBuffer& frameBuffer, uint16_t bufferIndex, uint16_t tile);
     void drawLine(unsigned line, uint16_t plane, uint32_t horizontalScroll, uint32_t verticalScroll);
     void drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet);
-    void drawDebugDisplays();
+    uint16_t vram16(uint16_t addr);
 
+    void drawDebugDisplays();
     bool m_debug = true;
 
     // memory
-    std::array<uint8_t, 0x10000> m_vram{}; // 0xFFFF bytes
-    std::array<uint16_t, 64> m_cram{}; // 64 9bit words
-    std::array<uint16_t, 40> m_vsram{}; // 40 10bit words
-    std::array<uint8_t, 24> m_reg; // 24 registers
+    std::array<uint8_t, 0x10000> m_vram{};
+    std::array<uint16_t, 64> m_cram{};
+    std::array<uint16_t, 40> m_vsram{};
+    std::array<uint8_t, 24> m_reg;
 
     // access
     uint16_t m_status{};
@@ -86,14 +87,14 @@ private:
     uint8_t m_codeRegister{};
 
     // register defined state
-    uint16_t m_pattern = 0x0000;
-    uint16_t m_scrollA = 0xc000;
-    uint16_t m_sprite = 0xd800;
-    uint16_t m_scrollB = 0xe000;
-    uint16_t m_window = 0xf000;
-    uint16_t m_hScroll = 0xfc00;
+    static constexpr uint16_t m_pattern = 0x0000;
+    uint16_t m_scrollA{};
+    uint16_t m_sprite{};
+    uint16_t m_scrollB{};
+    uint16_t m_window{};
+    uint16_t m_hScroll{};
 
-    uint8_t m_autoIncrement = 2; // TODO - check type
+    uint8_t m_autoIncrement{};
 
     uint32_t m_horizontalScrollA{};
     uint32_t m_verticalScrollA{};
@@ -104,7 +105,7 @@ private:
     uint16_t m_screenHeight = 224;
     uint8_t m_planeWidth = 64;
     uint8_t m_planeHeight = 32;
-    static constexpr uint32_t m_windowSize = 32; // window width == height
+    static constexpr uint32_t m_windowSize = 32; // window always 32x32
 
     // internal use
     bool m_expectingSecondWord = false;
