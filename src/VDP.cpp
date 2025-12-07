@@ -362,8 +362,14 @@ void VDP::drawLine(unsigned line, uint16_t plane, uint32_t horizontalScroll, uin
             const uint8_t lsn = info.horizontalFlip ? byte >> 4 : byte & 0x0F;
 
             const uint32_t bufferIndex = (2 * i + 8 * j + m_mainBuffer.width * line) * 4;
-            drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
-            drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
+            if (plane == m_scrollB) {
+                drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
+                drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
+            }
+            else if (!(msn == 0 || lsn == 0) || line > 190) { // TODO - hack
+                drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
+                drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
+            }
         }
     }
 }

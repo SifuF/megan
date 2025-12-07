@@ -9,7 +9,7 @@
 
 struct TileInfo {
     TileInfo(uint16_t tile) {
-        priority = static_cast<bool>(tile & 0x1000'0000'0000'0000);
+        priority = static_cast<bool>(tile & 0b1000'0000'0000'0000);
         pallet = static_cast<uint8_t>((tile >> 13) & 0b0000'0000'0000'0011);
         verticalFlip = static_cast<bool>(tile & 0b0001'0000'0000'0000);
         horizontalFlip = static_cast<bool>(tile & 0b0000'1000'0000'0000);
