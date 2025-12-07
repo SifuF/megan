@@ -47,6 +47,7 @@ struct VDPFrameBuffer {
 
 class VDP {
 public:
+    VDP();
     void buildFrame();
 
     uint16_t readCtrlPort();
@@ -59,7 +60,6 @@ public:
     VDPFrameBuffer& getScrollMapFrameBuffer() { return m_scrollMapBuffer; }
     VDPFrameBuffer& getWindowMapFrameBuffer() { return m_windowMapBuffer; }
 
-    VDP() = default;
     VDP(const VDP& other) = delete;
     VDP& operator=(const VDP& other) = delete;
     VDP(VDP&& other) = delete;
@@ -94,6 +94,21 @@ private:
     uint16_t m_window{};
     uint16_t m_hScroll{};
 
+    bool m_horizontalInterruptEnabled{};
+    bool m_hvCounterStopped{};
+    bool m_displayEnabled{};
+    bool m_verticalInterruptEnabled{};
+    bool m_dmaEnabled{};
+    bool m_vertical30cellMode{};
+    uint8_t m_backgroundColorCode{};
+    uint8_t m_backgroundColorPallet{};
+    uint8_t m_horizontalInterruptRaster{};
+    bool m_externalInterruptEnable{};
+    bool m_verticalScrollMode2Cell{};
+    uint8_t  m_horizontalScrollMode{};
+    bool m_horizontal40cellMode{};
+    bool m_shadowHighlight{};
+    uint8_t m_interlaceMode{};
     uint8_t m_autoIncrement{};
 
     uint32_t m_horizontalScrollA{};

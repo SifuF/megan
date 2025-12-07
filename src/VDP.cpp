@@ -1,6 +1,12 @@
 #include "VDP.hpp"
 #include <iostream>
 
+VDP::VDP()
+{
+    m_reg[0] = 0b00000100;
+    m_reg[1] = 0b00000100;
+}
+
 uint16_t VDP::readCtrlPort()
 {
     m_expectingSecondWord = false;
@@ -16,10 +22,16 @@ void VDP::updateRegister(uint8_t index, uint8_t value)
     m_reg[index] = value;
 
     switch (index) {
-        case 0: {
+        case 0: { // mode set 1
+            m_horizontalInterruptEnabled = static_cast<bool>(value & 0b0001'0000);
+            m_hvCounterStopped = static_cast<bool>(value & 0b0000'0010);
             break;
         }
-        case 1: {
+        case 1: { // mode set 2
+            m_displayEnabled = static_cast<bool>(value & 0b0100'0000);
+            m_verticalInterruptEnabled = static_cast<bool>(value & 0b0010'0000);
+            m_dmaEnabled = static_cast<bool>(value & 0b0001'0000);
+            m_vertical30cellMode = static_cast<bool>(value & 0b0000'1000);
             break;
         }
         case 2: { // scroll A pattern name table
@@ -38,32 +50,51 @@ void VDP::updateRegister(uint8_t index, uint8_t value)
             m_sprite = static_cast<uint16_t>(value) << 9;
             break;
         }
-        case 6: {
+        case 6: { // unused
             break;
         }
         case 7: {
+            m_backgroundColorCode = static_cast<uint8_t>(value & 0b0000'1111);
+            m_backgroundColorPallet = static_cast<uint8_t>((value >> 4) & 0b0000'0011);
             break;
         }
-        case 8: {
+        case 8: { // unused
             break;
         }
-        case 9: {
+        case 9: { // unused
             break;
         }
-        case 10: {
+        case 10: { // H interrupt
+            m_horizontalInterruptRaster = value;
             break;
         }
-        case 11: {
+        case 11: { // mode 3
+            m_externalInterruptEnable = static_cast<bool>(value & 0b0000'1000);
+            m_verticalScrollMode2Cell = static_cast<bool>(value & 0b0000'0100);
+            m_horizontalScrollMode = static_cast<uint8_t>(value & 0b0000'0011);
+            if (m_horizontalScrollMode == 2) {
+                throw std::runtime_error("horizontal scroll mode prohibited");
+            }
             break;
         }
-        case 12: {
+        case 12: { // mode 4
+            m_horizontal40cellMode = static_cast<bool>(value & 0b0000'0001);
+            if (m_horizontal40cellMode != static_cast<bool>(value & 0b1000'0000)) {
+                throw std::runtime_error("horizontal cell mode bits should be equal");
+            }
+
+            m_shadowHighlight = static_cast<bool>(value & 0b0000'1000);
+            m_interlaceMode = static_cast<uint8_t>((value >> 1) & 0b0000'0011);
+            if (m_interlaceMode == 2) {
+                throw std::runtime_error("interlace mode prohibited");
+            }
             break;
         }
         case 13: { // h scroll B data table
             m_hScroll = static_cast<uint16_t>(value) << 10; // TODO - check this
             break;
         }
-        case 14: {
+        case 14: { // unused
             break;
         }
         case 15: { // auto increment data
@@ -186,8 +217,11 @@ void VDP::writeDataPort(uint16_t data)
         case 0b0001: { // VRAM write
             //uint32 addr = m_addressRegister & 0xFFFE;  // force even, VDP ignores bit 0
             //uint32 realAddr = addr & 0x7FFF;           // mask to 32 KB VRAM
+            
             m_vram[m_addressRegister] = static_cast<uint8_t>(data >> 8);
             m_vram[m_addressRegister + 1] = static_cast<uint8_t>(data);
+            //m_vram[m_addressRegister] = static_cast<uint8_t>(data);
+            //m_vram[m_addressRegister + 1] = static_cast<uint8_t>(data >> 8);
             m_addressRegister = (m_addressRegister + m_autoIncrement) & 0xFFFF;
             break;
         }
@@ -198,6 +232,7 @@ void VDP::writeDataPort(uint16_t data)
         case 0b0011: { // CRAM write
             const auto index = m_addressRegister / 2;
             m_cram[index] = data;
+            //m_cram[index] = ((data & 0xFF) << 8) | (data >> 8);
             //currentAddr += 2; // autoincrement
             break;
         }
@@ -243,8 +278,8 @@ void VDP::drawDebugDisplays()
 
     m_horizontalScrollA++;
     //m_verticalScrollA++;
-    //m_horizontalScrollB--;
-    m_verticalScrollB--;
+    m_horizontalScrollB--;
+    //m_verticalScrollB--;
 
     auto drawPlaneBox = [this](uint32_t horizontalScroll, uint32_t verticalScroll, uint32_t scrollPlaneSelector)
     {
@@ -284,13 +319,11 @@ void VDP::drawDebugDisplays()
 
 void VDP::drawPixel(VDPFrameBuffer& frameBuffer, uint32_t index, uint8_t nibble, uint8_t pallet)
 {
-    if (nibble) {
-        const auto colourWord = m_cram[pallet * 16 + nibble];
-        frameBuffer.data[index] = ((colourWord >> 1) & 0b111) * 255 / 7;
-        frameBuffer.data[index + 1] = ((colourWord >> 5) & 0b111) * 255 / 7;
-        frameBuffer.data[index + 2] = ((colourWord >> 9) & 0b111) * 255 / 7;
-        frameBuffer.data[index + 3] = 255;
-    }
+    const auto colourWord = m_cram[pallet * 16 + nibble];
+    frameBuffer.data[index] = ((colourWord >> 1) & 0b111) * 255 / 7;
+    frameBuffer.data[index + 1] = ((colourWord >> 5) & 0b111) * 255 / 7;
+    frameBuffer.data[index + 2] = ((colourWord >> 9) & 0b111) * 255 / 7;
+    frameBuffer.data[index + 3] = 255;
 }
 
 void VDP::drawTile(VDPFrameBuffer& frameBuffer, uint16_t dst, uint16_t tile)

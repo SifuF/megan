@@ -162,6 +162,14 @@ TEST_TILE_F
     dc.l $20000000
     dc.l $00000000
 
+RAW_START
+    INCBIN "sonic_VRAM_swapped.ram"
+RAW_END
+
+CRAM_START
+    INCBIN "sonic_CRAM_swapped.ram"
+CRAM_END
+
 START
     move.b ($A10001),d0         ;TMSS
     andi.b #$0F,d0
@@ -178,7 +186,6 @@ NextVDPSetting                   ; rr=reg0    rr=reg1    rr=reg2
     move.w d1,(VDPCtrl)
     add.l #$00000100,d1          ;000081rr   000082rr   000083rr
     dbra d2,NextVDPSetting
-
 
 
 ;    move.w	#($FFFF/4)-1,d0      ;Iterating in words
@@ -208,15 +215,26 @@ NextVDPSetting                   ; rr=reg0    rr=reg1    rr=reg2
     move.w #%0000111000000000,VDPdata
 
 
+    lea     CRAM_START,a0
+    lea     VDPData,a1
+    move.l  #$C0000000,d1       ; CRAM write: index 0
+    moveq   #64-1,d2            ; 64 entries
+
+PalLoop:
+    move.l  d1,VDPCtrl
+    move.w  (a0)+,(a1)
+    add.l   #$00020000,d1
+    dbf     d2,PalLoop
+
     move.l #$40000000,d1
     move.l d1,VDPCtrl
+
 
     move.l #((TEST_TILES_END-TEST_TILES_START)/4)-1,d0
     lea TEST_TILES_START,a0
 TileLoop
     move.l (a0)+,VDPData
     dbra d0,TileLoop
-
 
     move.l #$40000003,d0
     move.l d0,VDPCtrl               ;b15 b14 b13 b12 b11 b10 b9  b8      b7  b6  b5  b4  b3  b2  b1  b0
@@ -233,6 +251,14 @@ ScrollBLoop
     move.w #$0002,VDPData
     dbra d0,ScrollBLoop
 
+
+    lea RAW_START, a0
+    move.l #((RAW_END-RAW_START))-1,d0
+    move.l #$40000000,d1
+    move.l d1,VDPCtrl
+BackgroundLoop
+    move.w (a0)+,VDPData
+    dbra d0, BackgroundLoop
 
     move.w	%0000011100000000,sr      ;Enable interrupts on 68k
 
