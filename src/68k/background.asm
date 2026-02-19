@@ -163,11 +163,11 @@ TEST_TILE_F
     dc.l $00000000
 
 RAW_START
-    INCBIN "sonic_VRAM_swapped.ram"
+    INCBIN "streets2_VRAM_swapped.ram"
 RAW_END
 
 CRAM_START
-    INCBIN "sonic_CRAM_swapped.ram"
+    INCBIN "streets2_CRAM_swapped.ram"
 CRAM_END
 
 START

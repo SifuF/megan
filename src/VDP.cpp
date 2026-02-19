@@ -366,7 +366,8 @@ void VDP::drawLine(unsigned line, uint16_t plane, uint32_t horizontalScroll, uin
                 drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
                 drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
             }
-            else if (!(msn == 0 || lsn == 0) || line > 190) { // TODO - hack
+            //else if (!(msn == 0 || lsn == 0) || line > 190) { // TODO - sonic hack
+            else if (!(msn == 0 || lsn == 0)) { // TODO - hack
                 drawPixel(m_mainBuffer, bufferIndex, msn, info.pallet);
                 drawPixel(m_mainBuffer, bufferIndex + 4, lsn, info.pallet);
             }
